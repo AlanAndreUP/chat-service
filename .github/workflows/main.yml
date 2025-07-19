@@ -16,7 +16,7 @@ jobs:
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          cd auth-service
+          cd chat-service
           git pull origin main
           npm i 
           npm run build
