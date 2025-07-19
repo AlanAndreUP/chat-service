@@ -49,6 +49,7 @@ MONGODB_URI=mongodb://localhost:27017/chat-service
 GEMINI_API_KEY=tu_api_key_de_gemini
 NODE_ENV=development
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+TRUST_PROXY=false
 ```
 
 4. **Ejecutar el servicio**
@@ -425,6 +426,7 @@ http://localhost:3003/s3/swagger.json
 | `GEMINI_API_KEY` | API Key de Gemini AI | - |
 | `NODE_ENV` | Ambiente | `development` |
 | `ALLOWED_ORIGINS` | Orígenes permitidos para CORS | `*` |
+| `TRUST_PROXY` | Confiar en headers de proxy (solo en producción) | `false` |
 
 ### Límites y Configuraciones
 

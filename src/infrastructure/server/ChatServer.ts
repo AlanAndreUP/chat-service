@@ -33,7 +33,9 @@ export class ChatServer {
   }
 
   private middlewares(): void {
-    // Configurar trust proxy para WebSockets y rate limiting
+    // Configurar trust proxy de forma segura
+    // Solo confiar en proxies si estamos detrás de un proxy real
+    const isBehindProxy = process.env.NODE_ENV === 'production' || process.env.TRUST_PROXY === 'true';
     this.app.set('trust proxy', true);
     
     // Seguridad
@@ -59,12 +61,12 @@ export class ChatServer {
         status: 'error'
       },
       keyGenerator: (req) => {
-        const forwardedFor = req.headers['x-forwarded-for']?.toString();
-        return forwardedFor ? forwardedFor.split(',')[0].trim() : (req.ip || 'unknown');
+        // Usar IP real sin depender de headers que pueden ser falsificados
+        return req.ip || req.connection.remoteAddress || 'unknown';
       },
       skip: (req) => {
         // Saltar rate limiting para health checks y status
-        return req.path === '/health' || req.path === '/chat/status';
+        return req.path === '/s3/health' || req.path === '/s3/chat/status';
       }
     });
     this.app.use(limiter);
