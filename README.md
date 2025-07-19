@@ -60,47 +60,47 @@ npm run dev
 
 ### Health Check
 ```
-GET /health
+GET /s3/health
 ```
 
 ### Chat con IA
 ```
-POST /chat/message
-GET /chat/history/:estudiante_id
-GET /chat/history/:estudiante_id/messages
-POST /chat/attempt
-GET /chat/attempts/:estudiante_id
-GET /chat/status
-GET /chat/ai/info
-POST /chat/ai/test
+POST /s3/chat/message
+GET /s3/chat/history/:estudiante_id
+GET /s3/chat/history/:estudiante_id/messages
+POST /s3/chat/attempt
+GET /s3/chat/attempts/:estudiante_id
+GET /s3/chat/status
+GET /s3/chat/ai/info
+POST /s3/chat/ai/test
 ```
 
 ### Conversaciones 1 a 1
 ```
-POST /conversations/message
-GET /conversations/:usuario_id
-GET /conversations/:conversation_id/messages
-GET /conversations/status
+POST /s3/conversations/message
+GET /s3/conversations/:usuario_id
+GET /s3/conversations/:conversation_id/messages
+GET /s3/conversations/status
 ```
 
 ### WebSocket
 ```
 WebSocket: ws://localhost:3003
-GET /ws-info
+GET /s3/ws-info
 ```
 
 ### Documentación API
 ```
-GET /api-docs          # Interfaz Swagger UI
-GET /api-docs.json     # Especificación OpenAPI en JSON
-GET /swagger.json      # Archivo Swagger JSON completo
+GET /s3/api-docs          # Interfaz Swagger UI
+GET /s3/api-docs.json     # Especificación OpenAPI en JSON
+GET /s3/swagger.json      # Archivo Swagger JSON completo
 ```
 
 ## 💬 API de Chat con IA
 
 ### Enviar mensaje
 ```http
-POST /chat/message
+POST /s3/chat/message
 Content-Type: application/json
 
 {
@@ -139,14 +139,14 @@ Content-Type: application/json
 
 ### Obtener historial
 ```http
-GET /chat/history/user123?page=1&limit=20
+GET /s3/chat/history/user123?page=1&limit=20
 ```
 
 ## 💬 API de Conversaciones 1 a 1
 
 ### Enviar mensaje privado
 ```http
-POST /conversations/message
+POST /s3/conversations/message
 Content-Type: application/json
 
 {
@@ -178,7 +178,7 @@ Content-Type: application/json
 
 ### Obtener conversaciones de un usuario
 ```http
-GET /conversations/user123?page=1&limit=20
+GET /s3/conversations/user123?page=1&limit=20
 ```
 
 **Respuesta:**
@@ -212,7 +212,7 @@ GET /conversations/user123?page=1&limit=20
 
 ### Obtener mensajes de una conversación
 ```http
-GET /conversations/conv123/messages?usuario_id=user123&page=1&limit=50
+GET /s3/conversations/conv123/messages?usuario_id=user123&page=1&limit=50
 ```
 
 **Respuesta:**
@@ -362,10 +362,10 @@ docker run -p 3003:3003 --env-file .env chat-service
 
 El servicio incluye endpoints de monitoreo:
 
-- `/health`: Estado general del servicio
-- `/chat/status`: Estado del chat y IA
-- `/conversations/status`: Estado de conversaciones
-- `/ws-info`: Información de WebSocket
+- `/s3/health`: Estado general del servicio
+- `/s3/chat/status`: Estado del chat y IA
+- `/s3/conversations/status`: Estado de conversaciones
+- `/s3/ws-info`: Información de WebSocket
 
 ## 📚 Documentación API
 
@@ -381,7 +381,7 @@ npm run swagger:generate
 ### Swagger UI
 Accede a la documentación interactiva de la API en:
 ```
-http://localhost:3003/api-docs
+http://localhost:3003/s3/api-docs
 ```
 
 ### Características de la documentación:
@@ -394,13 +394,13 @@ http://localhost:3003/api-docs
 ### Especificación OpenAPI
 La especificación completa está disponible en formato JSON:
 ```
-http://localhost:3003/api-docs.json
+http://localhost:3003/s3/api-docs.json
 ```
 
 ### Archivo Swagger JSON
 Documentación completa en formato JSON estático:
 ```
-http://localhost:3003/swagger.json
+http://localhost:3003/s3/swagger.json
 ```
 
 ### Archivos de Documentación

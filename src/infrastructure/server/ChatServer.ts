@@ -75,9 +75,12 @@ export class ChatServer {
   }
 
   private routes(): void {
+    // Prefijo para todas las rutas
+    const API_PREFIX = '/s3';
+    
     /**
      * @swagger
-     * /health:
+     * /s3/health:
      *   get:
      *     summary: Health check del servicio
      *     description: Verifica el estado general del servicio de chat
@@ -121,7 +124,7 @@ export class ChatServer {
      *                   type: string
      *                   example: "success"
      */
-    this.app.get('/health', (req, res) => {
+    this.app.get(`${API_PREFIX}/health`, (req, res) => {
       const healthData = {
         service: 'chat-service',
         timestamp: new Date().toISOString(),
@@ -142,7 +145,7 @@ export class ChatServer {
 
     /**
      * @swagger
-     * /ws-info:
+     * /s3/ws-info:
      *   get:
      *     summary: Información de WebSocket
      *     description: Obtiene información sobre la configuración de WebSocket
@@ -195,7 +198,7 @@ export class ChatServer {
      *                   type: string
      *                   example: "success"
      */
-    this.app.get('/ws-info', (req, res) => {
+    this.app.get(`${API_PREFIX}/ws-info`, (req, res) => {
       res.json({
         data: {
           endpoint: `ws://localhost:${this.port}`,
@@ -230,7 +233,7 @@ export class ChatServer {
     });
 
     // Swagger Documentation
-    this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    this.app.use(`${API_PREFIX}/api-docs`, swaggerUi.serve, swaggerUi.setup(specs, {
       customCss: '.swagger-ui .topbar { display: none }',
       customSiteTitle: 'Chat Service API Documentation',
       customfavIcon: '/favicon.ico',
@@ -243,22 +246,22 @@ export class ChatServer {
     }));
 
     // API Documentation JSON
-    this.app.get('/api-docs.json', (req, res) => {
+    this.app.get(`${API_PREFIX}/api-docs.json`, (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.send(specs);
     });
 
     // Swagger JSON file
-    this.app.get('/swagger.json', (req, res) => {
+    this.app.get(`${API_PREFIX}/swagger.json`, (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.sendFile('swagger.json', { root: './' });
     });
 
     // Chat routes
-    this.app.use('/chat', createChatRoutes());
+    this.app.use(`${API_PREFIX}/chat`, createChatRoutes());
     
     // Conversation routes
-    this.app.use('/conversations', createConversationRoutes());
+    this.app.use(`${API_PREFIX}/conversations`, createConversationRoutes());
 
     // 404 handler
     this.app.use('*', (req, res) => {
@@ -325,14 +328,14 @@ export class ChatServer {
       console.log(`\n🚀 Chat Service corriendo en puerto ${this.port}`);
       console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
       console.log(`\n📡 Endpoints disponibles:`);
-      console.log(`   • Health Check:  http://localhost:${this.port}/health`);
-      console.log(`   • Chat API:      http://localhost:${this.port}/chat`);
-      console.log(`   • Conversations: http://localhost:${this.port}/conversations`);
+      console.log(`   • Health Check:  http://localhost:${this.port}/s3/health`);
+      console.log(`   • Chat API:      http://localhost:${this.port}/s3/chat`);
+      console.log(`   • Conversations: http://localhost:${this.port}/s3/conversations`);
       console.log(`   • WebSocket:     ws://localhost:${this.port}`);
-      console.log(`   • WS Info:       http://localhost:${this.port}/ws-info`);
-      console.log(`   • API Docs:      http://localhost:${this.port}/api-docs`);
-      console.log(`   • API Spec:      http://localhost:${this.port}/api-docs.json`);
-      console.log(`   • Swagger JSON:  http://localhost:${this.port}/swagger.json`);
+      console.log(`   • WS Info:       http://localhost:${this.port}/s3/ws-info`);
+      console.log(`   • API Docs:      http://localhost:${this.port}/s3/api-docs`);
+      console.log(`   • API Spec:      http://localhost:${this.port}/s3/api-docs.json`);
+      console.log(`   • Swagger JSON:  http://localhost:${this.port}/s3/swagger.json`);
       
       console.log(`\n💬 Funcionalidades de Chat:`);
       console.log(`   ✅ Chat en tiempo real con WebSockets`);

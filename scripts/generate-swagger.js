@@ -409,7 +409,7 @@ const swaggerConfig = {
     }
   ],
   paths: {
-    "/health": {
+    "/s3/health": {
       get: {
         summary: "Health check del servicio",
         description: "Verifica el estado general del servicio de chat",
@@ -472,7 +472,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/chat/message": {
+    "/s3/chat/message": {
       post: {
         summary: "Enviar mensaje de chat",
         description: "Envía un mensaje de chat y obtiene respuesta automática de IA",
@@ -534,7 +534,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/chat/history/{estudiante_id}": {
+    "/s3/chat/history/{estudiante_id}": {
       get: {
         summary: "Obtener historial de chat",
         description: "Obtiene el historial completo de chat de un estudiante",
@@ -624,7 +624,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/chat/history/{estudiante_id}/messages": {
+    "/s3/chat/history/{estudiante_id}/messages": {
       get: {
         summary: "Obtener solo mensajes",
         description: "Obtiene solo los mensajes del historial (sin intentos) - Más rápido",
@@ -698,7 +698,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/chat/attempt": {
+    "/s3/chat/attempt": {
       post: {
         summary: "Registrar intento de chat",
         description: "Registra un intento de chat cuando se abre el input sin enviar",
@@ -747,7 +747,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/chat/attempts/{estudiante_id}": {
+    "/s3/chat/attempts/{estudiante_id}": {
       get: {
         summary: "Obtener intentos de chat",
         description: "Obtiene los intentos de chat de un estudiante",
@@ -793,7 +793,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/chat/status": {
+    "/s3/chat/status": {
       get: {
         summary: "Estado del servicio de chat",
         description: "Verifica el estado del servicio de chat y la integración con Gemini IA",
@@ -875,7 +875,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/chat/ai/info": {
+    "/s3/chat/ai/info": {
       get: {
         summary: "Información del modelo de IA",
         description: "Obtiene información detallada sobre el modelo de IA configurado",
@@ -936,7 +936,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/chat/ai/test": {
+    "/s3/chat/ai/test": {
       post: {
         summary: "Probar el servicio de IA",
         description: "Prueba el servicio de IA con un mensaje de prueba",
@@ -1024,7 +1024,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/conversations/message": {
+    "/s3/conversations/message": {
       post: {
         summary: "Enviar mensaje privado",
         description: "Envía un mensaje privado a otro usuario",
@@ -1102,7 +1102,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/conversations/{usuario_id}": {
+    "/s3/conversations/{usuario_id}": {
       get: {
         summary: "Obtener conversaciones de usuario",
         description: "Obtiene las conversaciones de un usuario",
@@ -1165,7 +1165,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/conversations/{conversation_id}/messages": {
+    "/s3/conversations/{conversation_id}/messages": {
       get: {
         summary: "Obtener mensajes de conversación",
         description: "Obtiene los mensajes de una conversación específica",
@@ -1237,7 +1237,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/conversations/status": {
+    "/s3/conversations/status": {
       get: {
         summary: "Estado del servicio de conversaciones",
         description: "Verifica el estado del servicio de conversaciones 1 a 1",
@@ -1303,7 +1303,7 @@ const swaggerConfig = {
         }
       }
     },
-    "/ws-info": {
+    "/s3/ws-info": {
       get: {
         summary: "Información de WebSocket",
         description: "Obtiene información sobre la configuración de WebSocket",
