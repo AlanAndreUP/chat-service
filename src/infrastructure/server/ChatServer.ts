@@ -35,7 +35,6 @@ export class ChatServer {
   private middlewares(): void {
     // Configurar trust proxy de forma segura
     // Solo confiar en proxies si estamos detrás de un proxy real
-    const isBehindProxy = process.env.NODE_ENV === 'production' || process.env.TRUST_PROXY === 'true';
     this.app.set('trust proxy', true);
     
     // Seguridad
