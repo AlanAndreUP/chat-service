@@ -320,7 +320,8 @@ export class ChatServer {
   }
 
   public start(): void {
-    this.httpServer.listen(this.port, () => {
+    this.httpServer.listen(this.port, '0.0.0.0', () => {
+
       console.log(`\n🚀 Chat Service corriendo en puerto ${this.port}`);
       console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
       console.log(`\n📡 Endpoints disponibles:`);
