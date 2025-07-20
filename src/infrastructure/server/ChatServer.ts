@@ -42,12 +42,13 @@ export class ChatServer {
       crossOriginEmbedderPolicy: false // Permitir WebSockets
     }));
     
-    // CORS configurado para WebSockets
+    // CORS configurado para WebSockets - Configuración libre
     this.app.use(cors({
-      origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+      origin: true, // Permitir todos los orígenes
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization']
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-User-ID', 'Origin', 'X-Requested-With', 'Accept'],
+      exposedHeaders: ['Content-Length', 'X-User-ID']
     }));
 
     // Rate limiting más permisivo para chat
@@ -73,6 +74,22 @@ export class ChatServer {
     // Parsers
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
+    
+    // Middleware adicional para CORS preflight - Configuración libre
+    this.app.use((req, res, next) => {
+      // Permitir cualquier origen
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-User-ID');
+      
+      // Manejar preflight requests
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
+    });
   }
 
   private routes(): void {

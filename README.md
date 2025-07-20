@@ -50,6 +50,9 @@ GEMINI_API_KEY=tu_api_key_de_gemini
 NODE_ENV=development
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 TRUST_PROXY=false
+
+# Nota: CORS está configurado para permitir todos los orígenes (*)
+# Cualquier dominio puede acceder a la API sin restricciones
 ```
 
 4. **Ejecutar el servicio**
@@ -262,6 +265,25 @@ La API utiliza autenticación simplificada basada en `userId`. Para usar la API:
 1. **Proporcionar userId** en las peticiones
 2. **Para WebSockets**: Incluir userId en `auth.userId` al conectar
 
+## 🌐 CORS (Cross-Origin Resource Sharing)
+
+### Configuración libre:
+- ✅ **Todos los orígenes permitidos** - Cualquier dominio puede acceder a la API
+- ✅ **Sin restricciones de dominio** - Ideal para desarrollo y pruebas
+
+### Headers permitidos:
+- `Content-Type`
+- `Authorization`
+- `X-User-ID` (para autenticación)
+- `Origin`
+- `X-Requested-With`
+- `Accept`
+
+### Métodos HTTP permitidos:
+- `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
+
+> **Nota**: Esta configuración es completamente libre y permite acceso desde cualquier dominio. Ideal para desarrollo, pruebas y APIs públicas.
+
 ### Ejemplo de conexión WebSocket:
 ```javascript
 const socket = io('http://localhost:3003', {
@@ -425,7 +447,7 @@ http://localhost:3003/s3/swagger.json
 | `MONGODB_URI` | URI de MongoDB | `mongodb://localhost:27017/chat-service` |
 | `GEMINI_API_KEY` | API Key de Gemini AI | - |
 | `NODE_ENV` | Ambiente | `development` |
-| `ALLOWED_ORIGINS` | Orígenes permitidos para CORS | `*` |
+| `ALLOWED_ORIGINS` | Orígenes permitidos para CORS (no usado - CORS libre) | `*` |
 | `TRUST_PROXY` | Confiar en headers de proxy (solo en producción) | `false` |
 
 ### Límites y Configuraciones
