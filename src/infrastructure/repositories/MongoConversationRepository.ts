@@ -221,4 +221,55 @@ export class MongoConversationRepository implements ConversationRepository {
       throw new Error('Error al eliminar conversación');
     }
   }
+
+  async findAllConversations(page: number = 1, limit: number = 50): Promise<{
+    conversations: Conversation[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
+    try {
+      const skip = (page - 1) * limit;
+
+      const [conversationsDoc, totalCount] = await Promise.all([
+        ConversationModel.find({ is_active: true })
+          .sort({ last_message_at: -1, updated_at: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean()
+          .exec(),
+        ConversationModel.countDocuments({ is_active: true })
+      ]);
+
+      const conversations = conversationsDoc.map((doc: any) => new Conversation(
+        doc._id,
+        doc.participant1_id,
+        doc.participant2_id,
+        doc.created_at,
+        doc.updated_at,
+        doc.is_active,
+        doc.last_message_at
+      ));
+
+      const totalPages = Math.ceil(totalCount / limit);
+      const pagination = {
+        page,
+        limit,
+        total: totalCount,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      };
+
+      return { conversations, pagination };
+    } catch (error) {
+      console.error('Error en findAllConversations:', error);
+      throw new Error('Error al obtener todas las conversaciones');
+    }
+  }
 } 

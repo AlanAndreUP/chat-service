@@ -3,26 +3,15 @@ import { ChatController } from '@infrastructure/controllers/Chat.controller';
 import { SendMessageUseCase } from '@application/use-cases/SendMessage.usecase';
 import { GetChatHistoryUseCase } from '@application/use-cases/GetChatHistory.usecase';
 import { MongoChatRepository } from '@infrastructure/repositories/MongoChatRepository';
+import { MongoChatAttemptsRepository } from '@infrastructure/repositories/MongoChatAttemptsRepository';
 import { GeminiAIService } from '@application/services/GeminiAI.service';
-
-// Simulamos el repositorio de intentos por ahora
-class MockChatAttemptsRepository {
-  async incrementAttempt() { return {} as any; }
-  async findById() { return null; }
-  async save() { return {} as any; }
-  async findByStudentChat() { return []; }
-  async getAttemptStats() { return null; }
-  async getTotalAttempts() { return 0; }
-  async deleteOldAttempts() { return 0; }
-  async deleteByStudentChat() { return; }
-}
 
 export function createChatRoutes(): Router {
   const router = Router();
   
   // Dependencias
   const chatRepository = new MongoChatRepository();
-  const attemptsRepository = new MockChatAttemptsRepository();
+  const attemptsRepository = new MongoChatAttemptsRepository();
   const geminiService = new GeminiAIService();
   
   // Casos de uso

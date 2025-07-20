@@ -448,4 +448,58 @@ export class MongoChatRepository implements ChatRepository {
       throw new Error('Error al buscar mensajes por conversación');
     }
   }
+
+  async findAllMessages(page: number = 1, limit: number = 50): Promise<{
+    messages: ChatHistory[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
+    try {
+      const skip = (page - 1) * limit;
+
+      const [chatDocs, totalCount] = await Promise.all([
+        ChatHistoryModel.find({})
+          .sort({ fecha: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        ChatHistoryModel.countDocuments({})
+      ]);
+
+      const messages = chatDocs.map(doc => new ChatHistory(
+        doc._id,
+        doc.mensaje,
+        doc.estado,
+        doc.fecha,
+        doc.usuario_id,
+        doc.created_at,
+        doc.updated_at,
+        doc.is_ai_response,
+        doc.response_to_message_id,
+        doc.conversation_id,
+        doc.recipient_id
+      ));
+
+      const totalPages = Math.ceil(totalCount / limit);
+      const pagination = {
+        page,
+        limit,
+        total: totalCount,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      };
+
+      return { messages, pagination };
+    } catch (error) {
+      console.error('Error finding all messages:', error);
+      throw new Error('Error al obtener todos los mensajes');
+    }
+  }
 } 

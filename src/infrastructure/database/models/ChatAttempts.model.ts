@@ -1,10 +1,16 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IChatAttemptsDocument extends Document {
   _id: string;
   open_without_send: number;
   chat_estudiante_id: string;
   created_at: Date;
+}
+
+export interface IChatAttemptsModel extends Model<IChatAttemptsDocument> {
+  incrementAttempt(chatEstudianteId: string): Promise<IChatAttemptsDocument>;
+  generateId(): string;
+  getAttemptStats(chatEstudianteId: string, days?: number): Promise<any[]>;
 }
 
 const ChatAttemptsSchema = new Schema<IChatAttemptsDocument>({
@@ -94,4 +100,4 @@ ChatAttemptsSchema.statics.getAttemptStats = function(chatEstudianteId: string, 
   ]);
 };
 
-export const ChatAttemptsModel = mongoose.model<IChatAttemptsDocument>('ChatAttempts', ChatAttemptsSchema); 
+export const ChatAttemptsModel = mongoose.model<IChatAttemptsDocument, IChatAttemptsModel>('ChatAttempts', ChatAttemptsSchema); 

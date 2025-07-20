@@ -24,4 +24,17 @@ export interface ConversationRepository {
   
   // Eliminar conversación
   delete(conversationId: string): Promise<boolean>;
+
+  // Obtener todas las conversaciones de todos los usuarios
+  findAllConversations(page?: number, limit?: number): Promise<{
+    conversations: Conversation[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>;
 } 

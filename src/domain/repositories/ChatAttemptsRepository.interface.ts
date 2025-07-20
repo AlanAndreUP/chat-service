@@ -30,4 +30,17 @@ export interface ChatAttemptsRepository {
   // Operaciones de limpieza
   deleteOldAttempts(daysOld: number): Promise<number>;
   deleteByStudentChat(chatEstudianteId: string): Promise<void>;
+
+  // Obtener todos los intentos de todos los usuarios
+  findAllAttempts(page?: number, limit?: number): Promise<{
+    attempts: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>;
 } 

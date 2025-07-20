@@ -6,6 +6,7 @@ import { createServer, Server as HTTPServer } from 'http';
 import swaggerUi from 'swagger-ui-express';
 import { createChatRoutes } from '@infrastructure/routes/chat.routes';
 import { createConversationRoutes } from '@infrastructure/routes/conversation.routes';
+import { createAdminRoutes } from '@infrastructure/routes/admin.routes';
 import { connectDatabase } from '@infrastructure/database/connection';
 import { ChatSocketHandler } from '@infrastructure/websocket/ChatSocket.handler';
 import { SendMessageUseCase } from '@application/use-cases/SendMessage.usecase';
@@ -281,6 +282,9 @@ export class ChatServer {
     // Conversation routes
     this.app.use(`${API_PREFIX}/conversations`, createConversationRoutes());
 
+    // Admin routes
+    this.app.use(`${API_PREFIX}/admin`, createAdminRoutes());
+
     // 404 handler
     this.app.use('*', (req, res) => {
       res.status(404).json({
@@ -349,6 +353,7 @@ export class ChatServer {
       console.log(`   • Health Check:  http://localhost:${this.port}/s3/health`);
       console.log(`   • Chat API:      http://localhost:${this.port}/s3/chat`);
       console.log(`   • Conversations: http://localhost:${this.port}/s3/conversations`);
+      console.log(`   • Admin API:     http://localhost:${this.port}/s3/admin`);
       console.log(`   • WebSocket:     ws://localhost:${this.port}`);
       console.log(`   • WS Info:       http://localhost:${this.port}/s3/ws-info`);
       console.log(`   • API Docs:      http://localhost:${this.port}/s3/api-docs`);
@@ -364,6 +369,13 @@ export class ChatServer {
       console.log(`   ✅ Chat privado 1 a 1 entre usuarios`);
       console.log(`   ✅ Gestión de conversaciones`);
       console.log(`   ✅ Marcado de mensajes leídos`);
+      
+      console.log(`\n🔧 Funcionalidades Administrativas:`);
+      console.log(`   ✅ Obtener todas las conversaciones`);
+      console.log(`   ✅ Obtener todos los mensajes`);
+      console.log(`   ✅ Obtener todos los intentos`);
+      console.log(`   ✅ Paginación avanzada`);
+      console.log(`   ✅ Estadísticas generales`);
       
       if (this.chatSocketHandler) {
         console.log(`\n🔌 WebSocket eventos soportados:`);

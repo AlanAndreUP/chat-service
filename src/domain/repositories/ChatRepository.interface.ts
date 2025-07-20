@@ -45,4 +45,17 @@ export interface ChatRepository {
   
   // Búsquedas por conversación
   findByConversationId(conversationId: string, limit?: number, skip?: number): Promise<ChatHistory[]>;
+
+  // Obtener todos los mensajes de todos los usuarios
+  findAllMessages(page?: number, limit?: number): Promise<{
+    messages: ChatHistory[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>;
 } 

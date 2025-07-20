@@ -1,30 +1,36 @@
-# Chat Service - Microservicio de Chat
+# Chat Service - Microservicio de Chat con IA
 
-Un microservicio completo para manejo de chat en tiempo real con soporte para IA y conversaciones privadas 1 a 1.
+Un microservicio completo para chat en tiempo real con integración de IA (Gemini) y funcionalidades administrativas.
 
 ## 🚀 Características
 
-### Chat con IA
-- **Chat en tiempo real** con WebSockets
-- **Respuestas automáticas** usando Gemini AI
+### Chat en Tiempo Real
+- **WebSockets** para comunicación en tiempo real
+- **Respuestas automáticas** con Google Gemini IA
+- **Notificaciones** de "está escribiendo"
 - **Historial persistente** de mensajes
 - **Sistema de intentos** de chat
-- **Notificaciones** de "está escribiendo"
 
 ### Chat Privado 1 a 1
-- **Mensajes privados** entre usuarios
-- **Gestión de conversaciones** automática
-- **Historial de conversaciones** con paginación
-- **Marcado de mensajes leídos**
-- **Búsqueda de conversaciones** por usuario
+- **Conversaciones privadas** entre usuarios
+- **Gestión de conversaciones** con paginación
+- **Marcado de mensajes** como leídos
+- **Historial de conversaciones** completo
+
+### Funcionalidades Administrativas
+- **Obtener todas las conversaciones** de todos los usuarios
+- **Obtener todos los mensajes** de chat de todos los usuarios
+- **Obtener todos los intentos** de chat de todos los usuarios
+- **Paginación avanzada** para grandes volúmenes de datos
+- **Estadísticas generales** del sistema
 
 ## 📋 Requisitos
 
 - Node.js 18+
 - MongoDB
-- API Key de Google Gemini AI
+- API Key de Google Gemini
 
-## 🛠️ Instalación
+## 🔧 Instalación
 
 1. **Clonar el repositorio**
 ```bash
@@ -44,145 +50,58 @@ cp .env.example .env
 
 Editar `.env`:
 ```env
-PORT=3003
 MONGODB_URI=mongodb://localhost:27017/chat-service
-GEMINI_API_KEY=tu_api_key_de_gemini
+GEMINI_API_KEY=tu-api-key-de-gemini
+PORT=3003
 NODE_ENV=development
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
-TRUST_PROXY=false
-
-# Nota: CORS está configurado para permitir todos los orígenes (*)
-# Cualquier dominio puede acceder a la API sin restricciones
 ```
 
 4. **Ejecutar el servicio**
 ```bash
-npm run dev
+npm start
 ```
 
-## 📡 Endpoints
+## 📡 Endpoints Disponibles
 
 ### Health Check
-```
-GET /s3/health
-```
+- `GET /s3/health` - Estado del servicio
 
-### Chat con IA
-```
-POST /s3/chat/message
-GET /s3/chat/history/:estudiante_id
-GET /s3/chat/history/:estudiante_id/messages
-POST /s3/chat/attempt
-GET /s3/chat/attempts/:estudiante_id
-GET /s3/chat/status
-GET /s3/chat/ai/info
-POST /s3/chat/ai/test
-```
+### Chat API
+- `POST /s3/chat/message` - Enviar mensaje de chat
+- `GET /s3/chat/history/:estudiante_id` - Historial de chat
+- `GET /s3/chat/history/:estudiante_id/messages` - Solo mensajes
+- `POST /s3/chat/attempt` - Registrar intento de chat
+- `GET /s3/chat/attempts/:estudiante_id` - Intentos de chat
+- `GET /s3/chat/status` - Estado del servicio de chat
+- `GET /s3/chat/ai/info` - Información de IA
+- `POST /s3/chat/ai/test` - Probar IA
 
-### Conversaciones 1 a 1
-```
-POST /s3/conversations/message
-GET /s3/conversations/:usuario_id
-GET /s3/conversations/:conversation_id/messages
-GET /s3/conversations/status
-```
+### Conversaciones API
+- `POST /s3/conversations/message` - Enviar mensaje privado
+- `GET /s3/conversations/:usuario_id` - Conversaciones de usuario
+- `GET /s3/conversations/:conversation_id/messages` - Mensajes de conversación
+- `GET /s3/conversations/status` - Estado del servicio de conversaciones
+
+### Admin API (Nuevas Rutas)
+- `GET /s3/admin/conversations` - Todas las conversaciones de todos los usuarios
+- `GET /s3/admin/messages` - Todos los mensajes de chat de todos los usuarios
+- `GET /s3/admin/attempts` - Todos los intentos de chat de todos los usuarios
+- `GET /s3/admin/status` - Estado del servicio administrativo
 
 ### WebSocket
-```
-WebSocket: ws://localhost:3003
-GET /s3/ws-info
-```
+- `ws://localhost:3003` - Conexión WebSocket
+- `GET /s3/ws-info` - Información de WebSocket
 
-### Documentación API
-```
-GET /s3/api-docs          # Interfaz Swagger UI
-GET /s3/api-docs.json     # Especificación OpenAPI en JSON
-GET /s3/swagger.json      # Archivo Swagger JSON completo
-```
+### Documentación
+- `GET /s3/api-docs` - Documentación Swagger UI
+- `GET /s3/api-docs.json` - Especificación OpenAPI
+- `GET /s3/swagger.json` - Archivo Swagger
 
-## 💬 API de Chat con IA
+## 🔧 Funcionalidades Administrativas
 
-### Enviar mensaje
-```http
-POST /s3/chat/message
-Content-Type: application/json
-
-{
-  "mensaje": "Hola, ¿cómo estás?",
-  "usuario_id": "user123",
-  "chat_estudiante_id": "estudiante456"
-}
-```
-
-**Respuesta:**
-```json
-{
-  "data": {
-    "message": {
-      "id": "msg123",
-      "mensaje": "Hola, ¿cómo estás?",
-      "estado": "enviado",
-      "fecha": "2024-01-15T10:30:00Z",
-      "usuario_id": "user123",
-      "is_ai_response": false
-    },
-    "ai_response": {
-      "id": "ai456",
-      "mensaje": "¡Hola! Estoy muy bien, gracias por preguntar. ¿En qué puedo ayudarte hoy?",
-      "estado": "enviado",
-      "fecha": "2024-01-15T10:30:05Z",
-      "usuario_id": "ai-system",
-      "is_ai_response": true,
-      "response_to_message_id": "msg123"
-    }
-  },
-  "message": "Mensaje enviado exitosamente y respuesta de IA generada",
-  "status": "success"
-}
-```
-
-### Obtener historial
-```http
-GET /s3/chat/history/user123?page=1&limit=20
-```
-
-## 💬 API de Conversaciones 1 a 1
-
-### Enviar mensaje privado
-```http
-POST /s3/conversations/message
-Content-Type: application/json
-
-{
-  "mensaje": "Hola, ¿cómo va todo?",
-  "usuario_id": "user123",
-  "recipient_id": "user456"
-}
-```
-
-**Respuesta:**
-```json
-{
-  "data": {
-    "message": {
-      "id": "msg789",
-      "mensaje": "Hola, ¿cómo va todo?",
-      "estado": "enviado",
-      "fecha": "2024-01-15T10:30:00Z",
-      "usuario_id": "user123",
-      "conversation_id": "conv123",
-      "recipient_id": "user456",
-      "is_ai_response": false
-    }
-  },
-  "message": "Mensaje privado enviado exitosamente",
-  "status": "success"
-}
-```
-
-### Obtener conversaciones de un usuario
-```http
-GET /s3/conversations/user123?page=1&limit=20
+### Obtener Todas las Conversaciones
+```bash
+GET /s3/admin/conversations?page=1&limit=50
 ```
 
 **Respuesta:**
@@ -192,292 +111,240 @@ GET /s3/conversations/user123?page=1&limit=20
     "conversations": [
       {
         "id": "conv123",
-        "participant1_id": "user123",
-        "participant2_id": "user456",
-        "created_at": "2024-01-15T10:00:00Z",
-        "updated_at": "2024-01-15T10:30:00Z",
+        "participant1_id": "user1",
+        "participant2_id": "user2",
+        "created_at": "2024-01-01T00:00:00.000Z",
+        "updated_at": "2024-01-01T12:00:00.000Z",
         "is_active": true,
-        "last_message_at": "2024-01-15T10:30:00Z"
+        "last_message_at": "2024-01-01T12:00:00.000Z"
       }
     ],
     "pagination": {
       "page": 1,
-      "limit": 20,
-      "total": 1,
-      "totalPages": 1,
-      "hasNext": false,
+      "limit": 50,
+      "total": 100,
+      "totalPages": 2,
+      "hasNext": true,
       "hasPrev": false
     }
   },
-  "message": "Conversaciones obtenidas exitosamente",
+  "message": "Todas las conversaciones obtenidas exitosamente",
   "status": "success"
 }
 ```
 
-### Obtener mensajes de una conversación
-```http
-GET /s3/conversations/conv123/messages?usuario_id=user123&page=1&limit=50
+### Obtener Todos los Mensajes
+```bash
+GET /s3/admin/messages?page=1&limit=50
 ```
 
 **Respuesta:**
 ```json
 {
   "data": {
-    "conversation": {
-      "id": "conv123",
-      "participant1_id": "user123",
-      "participant2_id": "user456",
-      "created_at": "2024-01-15T10:00:00Z",
-      "updated_at": "2024-01-15T10:30:00Z",
-      "is_active": true,
-      "last_message_at": "2024-01-15T10:30:00Z"
-    },
     "messages": [
       {
-        "id": "msg789",
-        "mensaje": "Hola, ¿cómo va todo?",
-        "estado": "leido",
-        "fecha": "2024-01-15T10:30:00Z",
-        "usuario_id": "user123",
-        "conversation_id": "conv123",
-        "recipient_id": "user456",
-        "is_ai_response": false
+        "id": "msg123",
+        "mensaje": "Hola, ¿cómo estás?",
+        "estado": "enviado",
+        "fecha": "2024-01-01T12:00:00.000Z",
+        "usuario_id": "user1",
+        "is_ai_response": false,
+        "conversation_id": "conv123"
       }
     ],
     "pagination": {
       "page": 1,
       "limit": 50,
-      "total": 1,
-      "totalPages": 1,
-      "hasNext": false,
+      "total": 500,
+      "totalPages": 10,
+      "hasNext": true,
       "hasPrev": false
     }
   },
-  "message": "Mensajes de conversación obtenidos exitosamente",
+  "message": "Todos los mensajes obtenidos exitosamente",
   "status": "success"
 }
 ```
 
-## 🔐 Autenticación
+### Obtener Todos los Intentos
+```bash
+GET /s3/admin/attempts?page=1&limit=50
+```
 
-La API utiliza autenticación simplificada basada en `userId`. Para usar la API:
+**Respuesta:**
+```json
+{
+  "data": {
+    "attempts": [
+      {
+        "id": "attempt123",
+        "open_without_send": 3,
+        "chat_estudiante_id": "estudiante1",
+        "created_at": "2024-01-01T12:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 50,
+      "total": 200,
+      "totalPages": 4,
+      "hasNext": true,
+      "hasPrev": false
+    }
+  },
+  "message": "Todos los intentos obtenidos exitosamente",
+  "status": "success"
+}
+```
 
-1. **Proporcionar userId** en las peticiones
-2. **Para WebSockets**: Incluir userId en `auth.userId` al conectar
+## 🗄️ Estructura de la Base de Datos
 
-## 🌐 CORS (Cross-Origin Resource Sharing)
+### Colecciones MongoDB
 
-### Configuración libre:
-- ✅ **Todos los orígenes permitidos** - Cualquier dominio puede acceder a la API
-- ✅ **Sin restricciones de dominio** - Ideal para desarrollo y pruebas
-
-### Headers permitidos:
-- `Content-Type`
-- `Authorization`
-- `X-User-ID` (para autenticación)
-- `Origin`
-- `X-Requested-With`
-- `Accept`
-
-### Métodos HTTP permitidos:
-- `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
-
-> **Nota**: Esta configuración es completamente libre y permite acceso desde cualquier dominio. Ideal para desarrollo, pruebas y APIs públicas.
-
-### Ejemplo de conexión WebSocket:
+#### ChatHistory
 ```javascript
-const socket = io('http://localhost:3003', {
-  auth: {
-    userId: 'user123',
-    userType: 'student', // opcional
-    email: 'user@example.com' // opcional
-  }
-});
+{
+  _id: String,
+  mensaje: String,
+  estado: String, // 'enviado', 'entregado', 'leido'
+  fecha: Date,
+  usuario_id: String,
+  created_at: Date,
+  updated_at: Date,
+  is_ai_response: Boolean,
+  response_to_message_id: String,
+  conversation_id: String,
+  recipient_id: String
+}
+```
+
+#### Conversation
+```javascript
+{
+  _id: String,
+  participant1_id: String,
+  participant2_id: String,
+  created_at: Date,
+  updated_at: Date,
+  is_active: Boolean,
+  last_message_at: Date
+}
+```
+
+#### ChatAttempts
+```javascript
+{
+  _id: String,
+  open_without_send: Number,
+  chat_estudiante_id: String,
+  created_at: Date
+}
 ```
 
 ## 🔌 WebSocket Events
 
 ### Cliente → Servidor
-- `send_message`: Enviar mensaje
-- `typing`: Usuario está escribiendo
-- `stop_typing`: Usuario dejó de escribir
-- `join_chat`: Unirse al chat
-- `leave_chat`: Salir del chat
-- `ping`: Ping para mantener conexión
+- `send_message` - Enviar mensaje
+- `typing` - Usuario está escribiendo
+- `stop_typing` - Usuario dejó de escribir
+- `join_chat` - Unirse al chat
+- `leave_chat` - Salir del chat
+- `ping` - Ping para mantener conexión
 
 ### Servidor → Cliente
-- `message_sent`: Mensaje enviado exitosamente
-- `ai_response`: Respuesta de IA
-- `user_typing`: Usuario está escribiendo
-- `user_connected`: Usuario conectado
-- `user_disconnected`: Usuario desconectado
-- `error`: Error en el servidor
-- `pong`: Respuesta al ping
+- `message_sent` - Mensaje enviado exitosamente
+- `ai_response` - Respuesta de IA
+- `user_typing` - Otro usuario está escribiendo
+- `user_connected` - Usuario conectado
+- `user_disconnected` - Usuario desconectado
+- `error` - Error en el servidor
+- `pong` - Respuesta al ping
 
-## 🏗️ Arquitectura
+## 🤖 Integración con Gemini IA
 
-```
-src/
-├── application/
-│   ├── services/
-│   │   └── GeminiAI.service.ts
-│   └── use-cases/
-│       ├── SendMessage.usecase.ts
-│       ├── SendPrivateMessage.usecase.ts
-│       ├── GetChatHistory.usecase.ts
-│       ├── GetConversations.usecase.ts
-│       └── GetConversationMessages.usecase.ts
-├── domain/
-│   ├── entities/
-│   │   ├── ChatHistory.entity.ts
-│   │   └── Conversation.entity.ts
-│   └── repositories/
-│       ├── ChatRepository.interface.ts
-│       └── ConversationRepository.interface.ts
-├── infrastructure/
-│   ├── controllers/
-│   │   ├── Chat.controller.ts
-│   │   └── Conversation.controller.ts
-│   ├── database/
-│   │   ├── connection.ts
-│   │   └── models/
-│   │       ├── ChatHistory.model.ts
-│   │       └── Conversation.model.ts
-│   ├── repositories/
-│   │   ├── MongoChatRepository.ts
-│   │   └── MongoConversationRepository.ts
-│   ├── routes/
-│   │   ├── chat.routes.ts
-│   │   └── conversation.routes.ts
-│   ├── server/
-│   │   └── ChatServer.ts
-│   └── websocket/
-│       └── ChatSocket.handler.ts
-└── shared/
-    └── types/
-        └── response.types.ts
-```
+El servicio utiliza Google Gemini para generar respuestas automáticas:
 
-## 🧪 Testing
+- **Modelo**: gemini-pro
+- **Especialización**: Educación y tutoría
+- **Idioma**: Español
+- **Contexto**: Mantiene contexto de conversación
+- **Manejo de errores**: Respuestas graciosas en caso de error
+
+## 📊 Monitoreo y Logs
+
+El servicio incluye logs detallados para monitoreo:
 
 ```bash
-# Ejecutar tests
-npm test
+# Ver logs en tiempo real
+npm run dev
 
-# Ejecutar tests en modo watch
-npm run test:watch
-
-# Ejecutar tests con coverage
-npm run test:coverage
+# Logs de ejemplo:
+📋 GET /admin/conversations - Obteniendo todas las conversaciones
+✅ Conversaciones obtenidas: 25
+💬 GET /admin/messages - Obteniendo todos los mensajes
+✅ Mensajes obtenidos: 150
+📊 GET /admin/attempts - Obteniendo todos los intentos
+✅ Intentos obtenidos: 75
 ```
 
-## 🐳 Docker
+## 🚀 Despliegue
 
+### Docker
 ```bash
 # Construir imagen
 docker build -t chat-service .
 
 # Ejecutar contenedor
-docker run -p 3003:3003 --env-file .env chat-service
+docker run -p 3003:3003 \
+  -e MONGODB_URI=mongodb://host.docker.internal:27017/chat-service \
+  -e GEMINI_API_KEY=tu-api-key \
+  chat-service
 ```
 
-## 📊 Monitoreo
+### Variables de Entorno de Producción
+```env
+NODE_ENV=production
+PORT=3003
+MONGODB_URI=mongodb://localhost:27017/chat-service
+GEMINI_API_KEY=tu-api-key-de-produccion
+ALLOWED_ORIGINS=https://tu-dominio.com
+```
 
-El servicio incluye endpoints de monitoreo:
+## 📝 Scripts Disponibles
 
-- `/s3/health`: Estado general del servicio
-- `/s3/chat/status`: Estado del chat y IA
-- `/s3/conversations/status`: Estado de conversaciones
-- `/s3/ws-info`: Información de WebSocket
-
-## 📚 Documentación API
-
-### Generar Documentación Swagger
 ```bash
-# Generar archivo swagger.json
-npm run swagger:generate
-
-# El archivo se genera en la raíz del proyecto
-# swagger.json
+npm start          # Iniciar en producción
+npm run dev        # Iniciar en desarrollo con nodemon
+npm run build      # Compilar TypeScript
+npm run test       # Ejecutar tests
+npm run lint       # Linter
+npm run generate-swagger  # Generar documentación Swagger
 ```
 
-### Swagger UI
-Accede a la documentación interactiva de la API en:
-```
-http://localhost:3003/s3/api-docs
-```
+## 🔒 Seguridad
 
-### Características de la documentación:
-- **Interfaz interactiva**: Prueba los endpoints directamente desde el navegador
-- **Ejemplos de uso**: Cada endpoint incluye ejemplos de request/response
-- **Validación automática**: Valida los datos de entrada según los esquemas
-- **Códigos de respuesta**: Documentación completa de todos los códigos HTTP
-- **Esquemas de datos**: Definiciones detalladas de todos los objetos de datos
+- **Helmet** para headers de seguridad
+- **Rate limiting** configurado
+- **CORS** configurado apropiadamente
+- **Validación** de entrada con Joi
+- **Sanitización** de datos
 
-### Especificación OpenAPI
-La especificación completa está disponible en formato JSON:
-```
-http://localhost:3003/s3/api-docs.json
-```
+## 📈 Escalabilidad
 
-### Archivo Swagger JSON
-Documentación completa en formato JSON estático:
-```
-http://localhost:3003/s3/swagger.json
-```
-
-### Archivos de Documentación
-- `swagger.json`: Documentación completa generada estáticamente
-- `scripts/generate-swagger.js`: Script para regenerar la documentación
-- `src/infrastructure/swagger/swagger.config.ts`: Configuración de Swagger
-
-### Endpoints documentados:
-- **Health**: Estado y monitoreo del servicio
-- **Chat**: Chat con IA, historial, intentos
-- **Conversations**: Mensajes privados 1 a 1
-- **WebSocket**: Información de conexiones en tiempo real
-
-## 🔧 Configuración
-
-### Variables de Entorno
-
-| Variable | Descripción | Default |
-|----------|-------------|---------|
-| `PORT` | Puerto del servidor | `3003` |
-| `MONGODB_URI` | URI de MongoDB | `mongodb://localhost:27017/chat-service` |
-| `GEMINI_API_KEY` | API Key de Gemini AI | - |
-| `NODE_ENV` | Ambiente | `development` |
-| `ALLOWED_ORIGINS` | Orígenes permitidos para CORS (no usado - CORS libre) | `*` |
-| `TRUST_PROXY` | Confiar en headers de proxy (solo en producción) | `false` |
-
-### Límites y Configuraciones
-
-- **Mensajes**: Máximo 5000 caracteres
-- **Conversaciones por página**: Máximo 50
-- **Mensajes por página**: Máximo 100
-- **Rate limiting**: 200 requests por IP cada 15 minutos
-- **WebSocket**: Conexiones ilimitadas
+- **Paginación** en todas las consultas
+- **Índices** optimizados en MongoDB
+- **WebSockets** con manejo de conexiones
+- **Arquitectura** modular y extensible
 
 ## 🤝 Contribución
 
 1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
 3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
+5. Abre un Pull Request
 
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
-
-## 🆘 Soporte
-
-Para soporte técnico o preguntas:
-
-- Crear un issue en GitHub
-- Contactar al equipo de desarrollo
-- Revisar la documentación de la API
-
----
-
-**Desarrollado con ❤️ para facilitar la comunicación en tiempo real** # chat-service
