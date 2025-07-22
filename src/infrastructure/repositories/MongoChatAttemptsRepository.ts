@@ -1,128 +1,66 @@
 import { ChatAttemptsRepository } from '@domain/repositories/ChatAttemptsRepository.interface';
 import { ChatAttemptsModel } from '@infrastructure/database/models/ChatAttempts.model';
+import { ChatAttemptCounter } from '@domain/entities/ChatAttempts.entity';
 
 export class MongoChatAttemptsRepository implements ChatAttemptsRepository {
-  
-  async incrementAttempt(chatEstudianteId: string): Promise<any> {
-    try {
-      return await ChatAttemptsModel.incrementAttempt(chatEstudianteId);
-    } catch (error) {
-      console.error('Error incrementing attempt:', error);
-      throw new Error('Error al incrementar intento de chat');
-    }
-  }
-
-  async findById(id: string): Promise<any> {
-    try {
-      return await ChatAttemptsModel.findById(id);
-    } catch (error) {
-      console.error('Error finding attempt by ID:', error);
-      throw new Error('Error al buscar intento por ID');
-    }
-  }
-
-  async save(attempt: any): Promise<any> {
-    try {
-      const attemptDoc = new ChatAttemptsModel(attempt);
-      return await attemptDoc.save();
-    } catch (error) {
-      console.error('Error saving attempt:', error);
-      throw new Error('Error al guardar intento');
-    }
-  }
-
-  async findByStudentChat(chatEstudianteId: string): Promise<any[]> {
-    try {
-      return await ChatAttemptsModel.find({ chat_estudiante_id: chatEstudianteId })
-        .sort({ created_at: -1 })
-        .lean();
-    } catch (error) {
-      console.error('Error finding attempts by student chat:', error);
-      throw new Error('Error al buscar intentos por estudiante');
-    }
-  }
-
-  async getAttemptStats(chatEstudianteId: string, days: number = 7): Promise<any> {
-    try {
-      const stats = await ChatAttemptsModel.getAttemptStats(chatEstudianteId, days);
-      return stats[0] || null;
-    } catch (error) {
-      console.error('Error getting attempt stats:', error);
-      throw new Error('Error al obtener estadísticas de intentos');
-    }
-  }
-
-  async getTotalAttempts(chatEstudianteId: string): Promise<number> {
-    try {
-      return await ChatAttemptsModel.countDocuments({ chat_estudiante_id: chatEstudianteId });
-    } catch (error) {
-      console.error('Error getting total attempts:', error);
-      throw new Error('Error al obtener total de intentos');
-    }
-  }
-
-  async deleteOldAttempts(days: number): Promise<number> {
-    try {
-      const fromDate = new Date();
-      fromDate.setDate(fromDate.getDate() - days);
-      
-      const result = await ChatAttemptsModel.deleteMany({
-        created_at: { $lt: fromDate }
-      });
-      
-      return result.deletedCount || 0;
-    } catch (error) {
-      console.error('Error deleting old attempts:', error);
-      throw new Error('Error al eliminar intentos antiguos');
-    }
-  }
-
-  async deleteByStudentChat(chatEstudianteId: string): Promise<void> {
-    try {
-      await ChatAttemptsModel.deleteMany({ chat_estudiante_id: chatEstudianteId });
-    } catch (error) {
-      console.error('Error deleting attempts by student chat:', error);
-      throw new Error('Error al eliminar intentos por estudiante');
-    }
-  }
-
-  async findAllAttempts(page: number = 1, limit: number = 50): Promise<{
-    attempts: any[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNext: boolean;
-      hasPrev: boolean;
+  async increment(usuario_id: string, conversation_id: string | undefined, fecha: Date): Promise<ChatAttemptCounter> {
+    const id = `${usuario_id}_${conversation_id || 'none'}_${fecha.toISOString().split('T')[0]}`;
+    const update = {
+      $inc: { cantidad: 1 },
+      $setOnInsert: {
+        usuario_id,
+        conversation_id,
+        fecha
+      }
     };
-  }> {
-    try {
-      const skip = (page - 1) * limit;
+    const opts = { upsert: true, new: true, setDefaultsOnInsert: true };
+    const doc = await ChatAttemptsModel.findOneAndUpdate(
+      { _id: id },
+      update,
+      opts
+    ).lean();
+    if (!doc) throw new Error('No se pudo incrementar el contador de intentos');
+    return new ChatAttemptCounter(
+      doc._id,
+      doc.usuario_id,
+      doc.fecha,
+      doc.conversation_id,
+      doc.cantidad
+    );
+  }
 
-      const [attempts, totalCount] = await Promise.all([
-        ChatAttemptsModel.find({})
-          .sort({ created_at: -1 })
-          .skip(skip)
-          .limit(limit)
-          .lean(),
-        ChatAttemptsModel.countDocuments({})
-      ]);
+  async getByUserAndDate(usuario_id: string, fecha: Date): Promise<ChatAttemptCounter | null> {
+    const doc = await ChatAttemptsModel.findOne({ usuario_id, fecha }).lean();
+    if (!doc) return null;
+    return new ChatAttemptCounter(
+      doc._id,
+      doc.usuario_id,
+      doc.fecha,
+      doc.conversation_id,
+      doc.cantidad
+    );
+  }
 
-      const totalPages = Math.ceil(totalCount / limit);
-      const pagination = {
-        page,
-        limit,
-        total: totalCount,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      };
+  async getByConversationAndDate(conversation_id: string, fecha: Date): Promise<ChatAttemptCounter | null> {
+    const doc = await ChatAttemptsModel.findOne({ conversation_id, fecha }).lean();
+    if (!doc) return null;
+    return new ChatAttemptCounter(
+      doc._id,
+      doc.usuario_id,
+      doc.fecha,
+      doc.conversation_id,
+      doc.cantidad
+    );
+  }
 
-      return { attempts, pagination };
-    } catch (error) {
-      console.error('Error finding all attempts:', error);
-      throw new Error('Error al obtener todos los intentos');
-    }
+  async getAllByUser(usuario_id: string): Promise<ChatAttemptCounter[]> {
+    const docs = await ChatAttemptsModel.find({ usuario_id }).sort({ fecha: -1 }).lean();
+    return docs.map((doc: any) => new ChatAttemptCounter(
+      doc._id,
+      doc.usuario_id,
+      doc.fecha,
+      doc.conversation_id,
+      doc.cantidad
+    ));
   }
 } 

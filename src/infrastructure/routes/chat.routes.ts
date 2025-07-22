@@ -45,7 +45,75 @@ export function createChatRoutes(): Router {
 
   /**
    * POST /chat/attempt
-   * Registrar intento de chat (cuando se abre el input sin enviar)
+   * Registrar intento de chat (contador diario)
+   * @swagger
+   * /chat/attempt:
+   *   post:
+   *     summary: Registrar intento de chat (contador diario)
+   *     description: Incrementa el contador de intentos de chat de un usuario (y conversación, si aplica) para el día actual.
+   *     tags: [Chat]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - usuario_id
+   *             properties:
+   *               usuario_id:
+   *                 type: string
+   *                 description: ID del usuario que realiza el intento
+   *                 example: "user123"
+   *               conversation_id:
+   *                 type: string
+   *                 description: ID de la conversación (opcional)
+   *                 example: "conv456"
+   *     responses:
+   *       201:
+   *         description: Intento registrado exitosamente (contador incrementado)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     id:
+   *                       type: string
+   *                       example: "user123_conv456_2024-06-10"
+   *                     usuario_id:
+   *                       type: string
+   *                       example: "user123"
+   *                     conversation_id:
+   *                       type: string
+   *                       example: "conv456"
+   *                     fecha:
+   *                       type: string
+   *                       format: date
+   *                       example: "2024-06-10"
+   *                     cantidad:
+   *                       type: integer
+   *                       example: 3
+   *                 message:
+   *                   type: string
+   *                   example: "Intento de chat registrado exitosamente"
+   *                 status:
+   *                   type: string
+   *                   example: "success"
+   *       400:
+   *         description: Datos de entrada inválidos
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *       500:
+   *         description: Error interno del servidor
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
    */
   router.post('/attempt', chatController.recordAttempt);
 
@@ -53,6 +121,78 @@ export function createChatRoutes(): Router {
    * GET /chat/attempts/:estudiante_id
    * Obtener intentos de chat de un estudiante
    */
+  /**
+ * @swagger
+ * /chat/attempts/{estudiante_id}:
+ *   get:
+ *     summary: Obtener contadores diarios de intentos de chat de un estudiante
+ *     description: Devuelve la lista de contadores de intentos de chat por día para el usuario especificado.
+ *     tags: [Chat]
+ *     parameters:
+ *       - in: path
+ *         name: estudiante_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID del estudiante (usuario)
+ *         example: "user123"
+ *     responses:
+ *       200:
+ *         description: Contadores de intentos obtenidos exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     estudiante_id:
+ *                       type: string
+ *                       example: "user123"
+ *                     attempts:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "user123_conv456_2024-06-10"
+ *                           usuario_id:
+ *                             type: string
+ *                             example: "user123"
+ *                           conversation_id:
+ *                             type: string
+ *                             example: "conv456"
+ *                           fecha:
+ *                             type: string
+ *                             format: date
+ *                             example: "2024-06-10"
+ *                           cantidad:
+ *                             type: integer
+ *                             example: 3
+ *                     total:
+ *                       type: integer
+ *                       example: 2
+ *                 message:
+ *                   type: string
+ *                   example: "Intentos obtenidos exitosamente"
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *       400:
+ *         description: ID del estudiante es requerido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
   router.get('/attempts/:estudiante_id', chatController.getAttempts);
 
   // ============================================================================
@@ -141,7 +281,7 @@ export function createChatRoutes(): Router {
             version: aiInfo.version
           },
           database: {
-            status: 'connected' // TODO: Verificar conexión real
+            status: 'connected'
           },
           websockets: {
             status: 'running'

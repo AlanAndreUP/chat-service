@@ -3,6 +3,7 @@ import { SendMessageUseCase } from '@application/use-cases/SendMessage.usecase';
 import { GetChatHistoryUseCase } from '@application/use-cases/GetChatHistory.usecase';
 import { ApiResponse, SendMessageRequest, GetChatHistoryRequest, ErrorResponse } from '@shared/types/response.types';
 import Joi from 'joi';
+import { MongoChatAttemptsRepository } from '@infrastructure/repositories/MongoChatAttemptsRepository';
 
 export class ChatController {
   constructor(
@@ -10,7 +11,7 @@ export class ChatController {
     private readonly getChatHistoryUseCase: GetChatHistoryUseCase
   ) {}
 
-  private validateSendMessageRequest = Joi.object({
+  private readonly validateSendMessageRequest = Joi.object({
     mensaje: Joi.string().min(1).max(5000).required().messages({
       'string.min': 'El mensaje no puede estar vacío',
       'string.max': 'El mensaje no puede tener más de 5000 caracteres',
@@ -22,12 +23,14 @@ export class ChatController {
     chat_estudiante_id: Joi.string().optional()
   });
 
-  private validateHistoryRequest = Joi.object({
+  private readonly validateHistoryRequest = Joi.object({
     page: Joi.number().integer().min(1).optional().default(1),
     limit: Joi.number().integer().min(1).max(100).optional().default(20),
     fecha_desde: Joi.string().isoDate().optional(),
     fecha_hasta: Joi.string().isoDate().optional()
   });
+
+  private readonly attemptsRepository = new MongoChatAttemptsRepository();
 
   /**
    * @swagger
@@ -374,39 +377,38 @@ export class ChatController {
     try {
       console.log('📝 POST /chat/attempt - Registrando intento');
 
-      const { estudiante_id } = req.body;
+      const { usuario_id, conversation_id } = req.body;
 
-      if (!estudiante_id) {
+      if (!usuario_id) {
         const errorResponse: ErrorResponse = {
           data: null,
-          message: 'ID del estudiante es requerido',
+          message: 'ID del usuario es requerido',
           status: 'error',
           error: {
-            code: 'MISSING_STUDENT_ID'
+            code: 'MISSING_USER_ID'
           }
         };
         res.status(400).json(errorResponse);
         return;
       }
 
-      // TODO: Implementar lógica de registrar intento
-      // Por ahora, solo retornamos éxito
+      // Obtener fecha actual
+      const fecha = new Date();
+
+      // Incrementar contador
+      const attemptCounter = await this.attemptsRepository.increment(usuario_id, conversation_id, fecha);
+
       const response: ApiResponse = {
-        data: {
-          estudiante_id,
-          attempt_recorded: true,
-          timestamp: new Date().toISOString()
-        },
+        data: attemptCounter.toJSON(),
         message: 'Intento de chat registrado exitosamente',
         status: 'success'
       };
 
       res.status(201).json(response);
-      console.log(`✅ Intento registrado para estudiante: ${estudiante_id}`);
+      console.log(`✅ Intento registrado para usuario: ${usuario_id} en fecha: ${fecha}`);
 
     } catch (error) {
       console.error('❌ Error en recordAttempt:', error);
-      
       const errorResponse: ErrorResponse = {
         data: null,
         message: error instanceof Error ? error.message : 'Error interno del servidor',
@@ -415,7 +417,6 @@ export class ChatController {
           code: 'RECORD_ATTEMPT_ERROR'
         }
       };
-
       res.status(500).json(errorResponse);
     }
   };
@@ -443,12 +444,14 @@ export class ChatController {
         return;
       }
 
-      // TODO: Implementar lógica real de obtener intentos
+      // Buscar todos los contadores de intentos para el usuario
+      const attempts = await this.attemptsRepository.getAllByUser(estudiante_id);
+
       const response: ApiResponse = {
         data: {
           estudiante_id,
-          attempts: [],
-          total: 0
+          attempts: attempts.map(a => a.toJSON()),
+          total: attempts.length
         },
         message: 'Intentos obtenidos exitosamente',
         status: 'success'
@@ -459,7 +462,6 @@ export class ChatController {
 
     } catch (error) {
       console.error('❌ Error en getAttempts:', error);
-      
       const errorResponse: ErrorResponse = {
         data: null,
         message: error instanceof Error ? error.message : 'Error interno del servidor',
@@ -468,7 +470,6 @@ export class ChatController {
           code: 'GET_ATTEMPTS_ERROR'
         }
       };
-
       res.status(500).json(errorResponse);
     }
   };

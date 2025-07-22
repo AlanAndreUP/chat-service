@@ -1,46 +1,8 @@
-export interface ChatAttempt {
-  id: string;
-  open_without_send: number;
-  chat_estudiante_id: string;
-  created_at: Date;
-}
-
-export interface AttemptStats {
-  totalAttempts: number;
-  avgAttemptsPerDay: number;
-  maxAttemptsInDay: number;
-  daysWithAttempts: number;
-}
+import { ChatAttemptCounter } from '../entities/ChatAttempts.entity';
 
 export interface ChatAttemptsRepository {
-  // Operaciones básicas
-  save(attempt: ChatAttempt): Promise<ChatAttempt>;
-  findById(id: string): Promise<ChatAttempt | null>;
-  
-  // Operaciones específicas de intentos
-  incrementAttempt(chatEstudianteId: string): Promise<ChatAttempt>;
-  
-  // Consultas por chat-estudiante
-  findByStudentChat(chatEstudianteId: string, days?: number): Promise<ChatAttempt[]>;
-  
-  // Estadísticas
-  getAttemptStats(chatEstudianteId: string, days?: number): Promise<AttemptStats | null>;
-  getTotalAttempts(chatEstudianteId: string, days?: number): Promise<number>;
-  
-  // Operaciones de limpieza
-  deleteOldAttempts(daysOld: number): Promise<number>;
-  deleteByStudentChat(chatEstudianteId: string): Promise<void>;
-
-  // Obtener todos los intentos de todos los usuarios
-  findAllAttempts(page?: number, limit?: number): Promise<{
-    attempts: any[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNext: boolean;
-      hasPrev: boolean;
-    };
-  }>;
+  increment(usuario_id: string, conversation_id: string | undefined, fecha: Date): Promise<ChatAttemptCounter>;
+  getByUserAndDate(usuario_id: string, fecha: Date): Promise<ChatAttemptCounter | null>;
+  getByConversationAndDate(conversation_id: string, fecha: Date): Promise<ChatAttemptCounter | null>;
+  getAllByUser(usuario_id: string): Promise<ChatAttemptCounter[]>;
 } 

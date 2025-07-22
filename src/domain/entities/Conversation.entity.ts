@@ -15,7 +15,7 @@ export class Conversation {
     id?: string
   ): Conversation {
     // Asegurar que los participantes estén ordenados para evitar duplicados
-    const [p1, p2] = [participant1_id, participant2_id].sort();
+    const [p1, p2] = [participant1_id, participant2_id].sort((a, b) => a.localeCompare(b));
     
     return new Conversation(
       id || this.generateId(),

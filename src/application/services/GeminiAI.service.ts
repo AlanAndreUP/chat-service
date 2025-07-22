@@ -14,8 +14,8 @@ export interface GeminiResponse {
 }
 
 export class GeminiAIService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
+  private readonly genAI: GoogleGenerativeAI;
+  private readonly model: any;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -48,11 +48,11 @@ export class GeminiAIService {
       const systemPrompt = `
 Eres un asistente de IA especializado en educación y tutorías. Tu objetivo es:
 
-1. 📚 Ayudar a estudiantes con preguntas académicas
-2. 🎯 Proporcionar explicaciones claras y didácticas
-3. 💡 Sugerir métodos de estudio efectivos
-4. 📝 Dar ejemplos prácticos cuando sea apropiado
-5. 🔍 Hacer preguntas para entender mejor las necesidades del estudiante
+1. Ayudar a estudiantes con preguntas académicas
+2. Proporcionar explicaciones claras y didácticas
+3. Sugerir métodos de estudio efectivos
+4. Dar ejemplos prácticos cuando sea apropiado
+5. Hacer preguntas para entender mejor las necesidades del estudiante
 
 Características de tus respuestas:
 - Amigable y motivador
