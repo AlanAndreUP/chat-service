@@ -1,12 +1,14 @@
 import { ChatRepository } from '@domain/repositories/ChatRepository.interface';
 import { ChatHistory } from '@domain/entities/ChatHistory.entity';
 import { GeminiAIService, GeminiRequest } from '@application/services/GeminiAI.service';
+import { EmailService, EmailAlertData } from '@application/services/EmailService';
 import { SendMessageRequest, SendMessageResponse } from '@shared/types/response.types';
 
 export class SendMessageUseCase {
   constructor(
     private readonly chatRepository: ChatRepository,
-    private readonly geminiService: GeminiAIService
+    private readonly geminiService: GeminiAIService,
+    private readonly emailService: EmailService
   ) {}
 
   async execute(request: SendMessageRequest): Promise<SendMessageResponse> {
@@ -54,7 +56,12 @@ export class SendMessageUseCase {
       // 5. Marcar mensaje del usuario como entregado
       await this.chatRepository.markAsDelivered([savedUserMessage.id]);
 
-      // 6. Retornar ambos mensajes
+      // 6. Enviar alerta por email (en paralelo, sin esperar)
+      this.sendEmailAlert(request, savedUserMessage.id, true).catch(error => {
+        console.error('❌ Error enviando email de alerta:', error);
+      });
+
+      // 7. Retornar ambos mensajes
       return {
         message: {
           id: savedUserMessage.id,
@@ -129,6 +136,26 @@ export class SendMessageUseCase {
         console.error('❌ Error crítico guardando mensaje:', saveError);
         throw new Error('Error interno del servidor de chat');
       }
+    }
+  }
+
+  private async sendEmailAlert(request: SendMessageRequest, messageId: string, isToAI: boolean): Promise<void> {
+    try {
+      // Analizar el contexto del mensaje
+      const analysis = await this.geminiService.analyzeConversationContext([request.mensaje]);
+
+      const emailData: EmailAlertData = {
+        senderId: request.usuario_id,
+        recipientId: isToAI ? 'ai-system' : request.recipient_id || 'unknown',
+        message: request.mensaje,
+        conversationId: request.chat_estudiante_id,
+        isToAI: isToAI,
+        analysis: analysis
+      };
+
+      await this.emailService.sendMessageAlert(emailData);
+    } catch (error) {
+      console.error('❌ Error en sendEmailAlert:', error);
     }
   }
 

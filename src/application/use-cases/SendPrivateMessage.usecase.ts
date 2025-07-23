@@ -1,12 +1,16 @@
 import { ChatRepository } from '@domain/repositories/ChatRepository.interface';
 import { ConversationRepository } from '@domain/repositories/ConversationRepository.interface';
 import { ChatHistory } from '@domain/entities/ChatHistory.entity';
+import { EmailService, EmailAlertData } from '@application/services/EmailService';
+import { GeminiAIService } from '@application/services/GeminiAI.service';
 import { SendMessageRequest, SendMessageResponse } from '@shared/types/response.types';
 
 export class SendPrivateMessageUseCase {
   constructor(
     private readonly chatRepository: ChatRepository,
-    private readonly conversationRepository: ConversationRepository
+    private readonly conversationRepository: ConversationRepository,
+    private readonly emailService: EmailService,
+    private readonly geminiService: GeminiAIService
   ) {}
 
   async execute(request: SendMessageRequest): Promise<SendMessageResponse> {
@@ -50,7 +54,12 @@ export class SendPrivateMessageUseCase {
       // 4. Marcar mensaje como entregado
       await this.chatRepository.markAsDelivered([savedUserMessage.id]);
 
-      // 5. Retornar el mensaje enviado
+      // 5. Enviar alerta por email (en paralelo, sin esperar)
+      this.sendEmailAlert(request, conversation.id, false).catch(error => {
+        console.error('❌ Error enviando email de alerta:', error);
+      });
+
+      // 6. Retornar el mensaje enviado
       return {
         message: {
           id: savedUserMessage.id,
@@ -110,6 +119,26 @@ export class SendPrivateMessageUseCase {
       }
       
       throw new Error('Error interno del servidor de chat privado');
+    }
+  }
+
+  private async sendEmailAlert(request: SendMessageRequest, conversationId: string, isToAI: boolean): Promise<void> {
+    try {
+      // Analizar el contexto del mensaje
+      const analysis = await this.geminiService.analyzeConversationContext([request.mensaje]);
+
+      const emailData: EmailAlertData = {
+        senderId: request.usuario_id,
+        recipientId: request.recipient_id || 'unknown',
+        message: request.mensaje,
+        conversationId: conversationId,
+        isToAI: isToAI,
+        analysis: analysis
+      };
+
+      await this.emailService.sendMessageAlert(emailData);
+    } catch (error) {
+      console.error('❌ Error en sendEmailAlert:', error);
     }
   }
 

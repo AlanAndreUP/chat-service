@@ -24,6 +24,13 @@ Un microservicio completo para chat en tiempo real con integración de IA (Gemin
 - **Paginación avanzada** para grandes volúmenes de datos
 - **Estadísticas generales** del sistema
 
+### Sistema de Alertas por Email
+- **Alertas automáticas** cuando se envían mensajes
+- **Análisis de IA en tiempo real** para detectar bullying, preocupación y flujo académico
+- **Emails personalizados** con análisis detallado del contexto
+- **Notificaciones al líder** (Alanenmexico12@gmail.com) para mensajes a IA
+- **Notificaciones a usuarios** para mensajes privados entre usuarios
+
 ## 📋 Requisitos
 
 - Node.js 18+
@@ -52,9 +59,20 @@ Editar `.env`:
 ```env
 MONGODB_URI=mongodb://localhost:27017/chat-service
 GEMINI_API_KEY=tu-api-key-de-gemini
+RESEND_API_KEY=tu-api-key-de-resend
 PORT=3003
 NODE_ENV=development
 ```
+
+**Variables de entorno requeridas:**
+- `MONGODB_URI`: URL de conexión a MongoDB
+- `GEMINI_API_KEY`: API Key de Google Gemini para IA
+- `RESEND_API_KEY`: API Key de Resend para envío de emails
+
+**Variables opcionales:**
+- `PORT`: Puerto del servidor (default: 3003)
+- `NODE_ENV`: Ambiente (development/production)
+- `ALLOWED_ORIGINS`: Orígenes permitidos para CORS
 
 4. **Ejecutar el servicio**
 ```bash
