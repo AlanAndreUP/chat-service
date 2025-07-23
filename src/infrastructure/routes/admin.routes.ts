@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { AdminController } from '@infrastructure/controllers/Admin.controller';
 import { GetAllConversationsUseCase } from '@application/use-cases/GetAllConversations.usecase';
 import { GetAllMessagesUseCase } from '@application/use-cases/GetAllMessages.usecase';
-import { GetAllAttemptsUseCase } from '@application/use-cases/GetAllAttempts.usecase';
+import { GetAllAttemptsUseCase } from '@/application/use-cases/GetAllAttemptsByUser.usecase';
 import { MongoConversationRepository } from '@infrastructure/repositories/MongoConversationRepository';
 import { MongoChatRepository } from '@infrastructure/repositories/MongoChatRepository';
 import { MongoChatAttemptsRepository } from '@infrastructure/repositories/MongoChatAttemptsRepository';

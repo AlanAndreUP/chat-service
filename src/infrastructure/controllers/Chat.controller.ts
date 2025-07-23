@@ -4,11 +4,15 @@ import { GetChatHistoryUseCase } from '@application/use-cases/GetChatHistory.use
 import { ApiResponse, SendMessageRequest, GetChatHistoryRequest, ErrorResponse } from '@shared/types/response.types';
 import Joi from 'joi';
 import { MongoChatAttemptsRepository } from '@infrastructure/repositories/MongoChatAttemptsRepository';
+import { AttemptMessageUseCase } from '@application/use-cases/AttemptMessage.usecase';
+import { GetAllAttemptsUseCase } from '@application/use-cases/GetAllAttemptsByUser.usecase';
 
 export class ChatController {
   constructor(
     private readonly sendMessageUseCase: SendMessageUseCase,
-    private readonly getChatHistoryUseCase: GetChatHistoryUseCase
+    private readonly getChatHistoryUseCase: GetChatHistoryUseCase,
+    private readonly attemptMessageUseCase: AttemptMessageUseCase,
+    private readonly getAllAttemptsUseCase: GetAllAttemptsUseCase
   ) {}
 
   private readonly validateSendMessageRequest = Joi.object({
@@ -392,20 +396,17 @@ export class ChatController {
         return;
       }
 
-      // Obtener fecha actual
-      const fecha = new Date();
-
-      // Incrementar contador
-      const attemptCounter = await this.attemptsRepository.increment(usuario_id, conversation_id, fecha);
+      // Usar el caso de uso
+      const result = await this.attemptMessageUseCase.execute({ usuario_id, conversation_id });
 
       const response: ApiResponse = {
-        data: attemptCounter.toJSON(),
+        data: result,
         message: 'Intento de chat registrado exitosamente',
         status: 'success'
       };
 
       res.status(201).json(response);
-      console.log(`✅ Intento registrado para usuario: ${usuario_id} en fecha: ${fecha}`);
+      console.log(`✅ Intento registrado para usuario: ${usuario_id}`);
 
     } catch (error) {
       console.error('❌ Error en recordAttempt:', error);
@@ -422,43 +423,49 @@ export class ChatController {
   };
 
   /**
-   * GET /chat/attempts/:estudiante_id
+   * GET /chat/attempts/:usuario_id
    * Obtener intentos de chat de un estudiante
    */
   getAttempts = async (req: Request, res: Response): Promise<void> => {
     try {
-      console.log(`📊 GET /chat/attempts/${req.params.estudiante_id} - Obteniendo intentos`);
+      console.log(`📊 GET /chat/attempts/${req.params.usuario_id} - Obteniendo intentos`);
 
-      const { estudiante_id } = req.params;
+      const { usuario_id } = req.params;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const conversation_id = req.query.conversation_id as string | undefined;
+      const fecha_desde = req.query.fecha_desde ? new Date(req.query.fecha_desde as string) : undefined;
+      const fecha_hasta = req.query.fecha_hasta ? new Date(req.query.fecha_hasta as string) : undefined;
 
-      if (!estudiante_id) {
+      if (!usuario_id) {
         const errorResponse: ErrorResponse = {
           data: null,
-          message: 'ID del estudiante es requerido',
+          message: 'ID del usuario es requerido',
           status: 'error',
           error: {
-            code: 'MISSING_STUDENT_ID'
+            code: 'MISSING_USER_ID'
           }
         };
         res.status(400).json(errorResponse);
         return;
       }
 
-      // Buscar todos los contadores de intentos para el usuario
-      const attempts = await this.attemptsRepository.getAllByUser(estudiante_id);
+      // Usar el caso de uso para obtener los intentos con filtros y paginación
+      const attemptsResult = await this.getAllAttemptsUseCase.execute({ usuario_id, page, limit, conversation_id, fecha_desde, fecha_hasta });
 
       const response: ApiResponse = {
         data: {
-          estudiante_id,
-          attempts: attempts.map(a => a.toJSON()),
-          total: attempts.length
+          usuario_id,
+          attempts: attemptsResult.attempts,
+          pagination: attemptsResult.pagination,
+          total: attemptsResult.pagination.total
         },
         message: 'Intentos obtenidos exitosamente',
         status: 'success'
       };
 
       res.status(200).json(response);
-      console.log(`✅ Intentos obtenidos para estudiante: ${estudiante_id}`);
+      console.log(`✅ Intentos obtenidos para usuario: ${usuario_id}`);
 
     } catch (error) {
       console.error('❌ Error en getAttempts:', error);
@@ -468,6 +475,119 @@ export class ChatController {
         status: 'error',
         error: {
           code: 'GET_ATTEMPTS_ERROR'
+        }
+      };
+      res.status(500).json(errorResponse);
+    }
+  };
+
+  /**
+   * GET /chat/attempts/:usuario_id/daily
+   * Obtener intentos de chat diarios de un usuario
+   */
+  getDailyAttempts = async (req: Request, res: Response): Promise<void> => {
+    try {
+      console.log(`📊 GET /chat/attempts/${req.params.usuario_id}/daily - Obteniendo intentos diarios`);
+
+      const { usuario_id } = req.params; 
+
+      if (!usuario_id) {
+        const errorResponse: ErrorResponse = {
+          data: null,
+          message: 'ID del usuario es requerido',
+          status: 'error',
+          error: {
+            code: 'MISSING_USER_ID'
+          }
+        };
+        res.status(400).json(errorResponse);
+        return;
+      }
+
+      // Obtener fecha actual
+      const fecha = new Date();
+
+      // Buscar contadores de intentos para el usuario en la fecha actual
+      const attempts = await this.attemptsRepository.getByUserAndDate(usuario_id, fecha);
+
+      const response: ApiResponse = {
+        data: {
+          usuario_id,
+          attempts: attempts ? [attempts.toJSON()] : [],
+          total: attempts ? 1 : 0
+        },
+        message: 'Intentos diarios obtenidos exitosamente',
+        status: 'success'
+      };
+
+      res.status(200).json(response);
+      console.log(`✅ Intentos diarios obtenidos para usuario: ${usuario_id}`);
+
+    } catch (error) {
+      console.error('❌ Error en getDailyAttempts:', error);
+      const errorResponse: ErrorResponse = {
+        data: null,
+        message: error instanceof Error ? error.message : 'Error interno del servidor',
+        status: 'error',
+        error: {
+          code: 'GET_DAILY_ATTEMPTS_ERROR'
+        }
+      };
+      res.status(500).json(errorResponse);
+    }
+  };
+
+  /**
+   * GET /chat/attempts/:usuario_id/daily/conversation/:conversation_id
+   * Obtener intentos de chat diarios de un usuario
+   */
+  getDailyAttemptsByConversation = async (req: Request, res: Response): Promise<void> => {
+    try {
+      console.log(`📊 GET /chat/attempts/${req.params.usuario_id}/daily/conversation - Obteniendo intentos diarios por conversación`);
+
+      const { usuario_id, conversation_id } = req.params; 
+
+      if (!usuario_id || !conversation_id) {
+        const errorResponse: ErrorResponse = {
+          data: null,
+          message: 'ID del usuario y conversación son requeridos',
+          status: 'error',
+          error: {
+            code: 'MISSING_USER_ID_AND_CONVERSATION_ID'
+          }
+        };
+        res.status(400).json(errorResponse);
+        return;
+      }
+
+      // Obtener fecha actual
+      const fecha = new Date();
+
+      // Buscar contadores de intentos para el usuario en la fecha actual
+      const attempts = await this.attemptsRepository.getByConversationAndDate(conversation_id, fecha);
+
+      const response: ApiResponse = {
+        data: {
+          usuario_id,
+          conversation_id,
+          attempts: attempts ? [attempts.toJSON()] : [],
+          total: attempts ? 1 : 0
+        },
+        message: 'Intentos diarios por conversación obtenidos exitosamente',
+        status: 'success'
+      };
+
+      res.status(200).json(response);
+      console.log(`✅ Intentos diarios por conversación obtenidos para usuario: ${usuario_id} y conversación: ${conversation_id}`);
+
+    } catch (error) {
+      console.error('❌ Error en getDailyAttemptsByConversation:', error);
+      const errorResponse: ErrorResponse = {
+        data: null,
+        message: error instanceof Error ? error.message : 'Error interno del servidor',
+        status: 'error',
+        error: {
+          code: 'GET_DAILY_ATTEMPTS_BY_CONVERSATION_ERROR'
         }
       };
       res.status(500).json(errorResponse);

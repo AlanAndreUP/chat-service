@@ -1,5 +1,5 @@
 import { ChatRepository, ChatFilters } from '@domain/repositories/ChatRepository.interface';
-import { ChatAttemptsRepository } from '@domain/repositories/ChatAttemptsRepository.interface';
+import { ChatAttemptFilters, ChatAttemptsRepository } from '@domain/repositories/ChatAttemptsRepository.interface';
 import { GetChatHistoryRequest, ChatHistoryResponse } from '@shared/types/response.types';
 
 export class GetChatHistoryUseCase {
@@ -36,12 +36,6 @@ export class GetChatHistoryUseCase {
 
       console.log(`✅ Obtenidos ${conversationResult.messages.length} mensajes del historial`);
 
-      // Obtener intentos de chat (en paralelo)
-      const attemptsPromise = this.getAttempts(request.estudiante_id);
-      const attempts = await attemptsPromise;
-
-      console.log(`✅ Obtenidos ${attempts.length} intentos de chat`);
-
       // Mapear mensajes a formato de respuesta
       const formattedMessages = conversationResult.messages.map(message => ({
         id: message.id,
@@ -55,10 +49,26 @@ export class GetChatHistoryUseCase {
         response_to_message_id: message.response_to_message_id
       }));
 
+      const attempts_filters: ChatAttemptFilters = {
+        usuario_id: request.estudiante_id,
+        page: request.page || 1,
+        limit: request.limit || 20
+      };
+
+      // Obtener todos los intentos del usuario
+      const attempts = await this.attemptsRepository.getAllByUser(attempts_filters);
+
       return {
         messages: formattedMessages,
-        attempts: attempts,
-        pagination: conversationResult.pagination
+        attempts: attempts.attempts.map(a => a.toJSON()),
+        pagination: {
+          page: request.page || 1,
+          limit: request.limit || 20,
+          total: attempts.total,
+          totalPages: Math.ceil(attempts.total / (request.limit || 20)),
+          hasNext: (request.page && request.page < Math.ceil(attempts.total / (request.limit || 20))) || false,
+          hasPrev: (request.page && request.page > 1) || false
+        }
       };
 
     } catch (error) {
@@ -210,17 +220,6 @@ export class GetChatHistoryUseCase {
     } catch (error) {
       console.error('❌ Error obteniendo respuestas de IA:', error);
       throw new Error('Error al obtener respuestas de IA');
-    }
-  }
-
-  private async getAttempts(estudianteId: string): Promise<any[]> {
-    try {
-      // Para simplificar, retornamos un array vacío por ahora
-      // En una implementación completa, necesitaríamos el chat_estudiante_id
-      return [];
-    } catch (error) {
-      console.error('❌ Error obteniendo intentos:', error);
-      return [];
     }
   }
 } 

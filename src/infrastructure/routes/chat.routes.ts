@@ -5,6 +5,8 @@ import { GetChatHistoryUseCase } from '@application/use-cases/GetChatHistory.use
 import { MongoChatRepository } from '@infrastructure/repositories/MongoChatRepository';
 import { MongoChatAttemptsRepository } from '@infrastructure/repositories/MongoChatAttemptsRepository';
 import { GeminiAIService } from '@application/services/GeminiAI.service';
+import { AttemptMessageUseCase } from '@application/use-cases/AttemptMessage.usecase';
+import { GetAllAttemptsUseCase } from '@application/use-cases/GetAllAttemptsByUser.usecase';
 
 export function createChatRoutes(): Router {
   const router = Router();
@@ -17,9 +19,16 @@ export function createChatRoutes(): Router {
   // Casos de uso
   const sendMessageUseCase = new SendMessageUseCase(chatRepository, geminiService);
   const getChatHistoryUseCase = new GetChatHistoryUseCase(chatRepository, attemptsRepository);
+  const attemptMessageUseCase = new AttemptMessageUseCase(attemptsRepository);
+  const getAllAttemptsUseCase = new GetAllAttemptsUseCase(attemptsRepository);
   
   // Controlador
-  const chatController = new ChatController(sendMessageUseCase, getChatHistoryUseCase);
+  const chatController = new ChatController(
+    sendMessageUseCase,
+    getChatHistoryUseCase,
+    attemptMessageUseCase,
+    getAllAttemptsUseCase
+  );
 
   // ============================================================================
   // RUTAS DE CHAT
@@ -47,7 +56,7 @@ export function createChatRoutes(): Router {
    * POST /chat/attempt
    * Registrar intento de chat (contador diario)
    * @swagger
-   * /chat/attempt:
+   * /s3/chat/attempt:
    *   post:
    *     summary: Registrar intento de chat (contador diario)
    *     description: Incrementa el contador de intentos de chat de un usuario (y conversación, si aplica) para el día actual.
@@ -123,19 +132,53 @@ export function createChatRoutes(): Router {
    */
   /**
  * @swagger
- * /chat/attempts/{estudiante_id}:
+ * /s3/chat/attempts/{usuario_id}:
  *   get:
- *     summary: Obtener contadores diarios de intentos de chat de un estudiante
- *     description: Devuelve la lista de contadores de intentos de chat por día para el usuario especificado.
+ *     summary: Obtener contadores diarios de intentos de chat de un usuario
+ *     description: Devuelve la lista de contadores de intentos de chat por día para el usuario especificado, con soporte de paginación y filtros.
  *     tags: [Chat]
  *     parameters:
  *       - in: path
- *         name: estudiante_id
+ *         name: usuario_id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID del estudiante (usuario)
+ *         description: ID del usuario
  *         example: "user123"
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Página de resultados
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Cantidad de resultados por página
+ *       - in: query
+ *         name: conversation_id
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filtrar por ID de conversación
+ *       - in: query
+ *         name: fecha_desde
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filtrar desde esta fecha (YYYY-MM-DD)
+ *       - in: query
+ *         name: fecha_hasta
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filtrar hasta esta fecha (YYYY-MM-DD)
  *     responses:
  *       200:
  *         description: Contadores de intentos obtenidos exitosamente
@@ -147,7 +190,7 @@ export function createChatRoutes(): Router {
  *                 data:
  *                   type: object
  *                   properties:
- *                     estudiante_id:
+ *                     usuario_id:
  *                       type: string
  *                       example: "user123"
  *                     attempts:
@@ -171,9 +214,30 @@ export function createChatRoutes(): Router {
  *                           cantidad:
  *                             type: integer
  *                             example: 3
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                           example: 1
+ *                         limit:
+ *                           type: integer
+ *                           example: 20
+ *                         total:
+ *                           type: integer
+ *                           example: 100
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 5
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrev:
+ *                           type: boolean
+ *                           example: false
  *                     total:
  *                       type: integer
- *                       example: 2
+ *                       example: 100
  *                 message:
  *                   type: string
  *                   example: "Intentos obtenidos exitosamente"
@@ -181,7 +245,7 @@ export function createChatRoutes(): Router {
  *                   type: string
  *                   example: "success"
  *       400:
- *         description: ID del estudiante es requerido
+ *         description: ID del usuario es requerido
  *         content:
  *           application/json:
  *             schema:
@@ -193,7 +257,7 @@ export function createChatRoutes(): Router {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-  router.get('/attempts/:estudiante_id', chatController.getAttempts);
+  router.get('/attempts/:usuario_id', chatController.getAttempts);
 
   // ============================================================================
   // RUTAS DE ESTADO Y HEALTH CHECK
@@ -201,7 +265,7 @@ export function createChatRoutes(): Router {
 
   /**
    * @swagger
-   * /chat/status:
+   * /s3/chat/status:
    *   get:
    *     summary: Estado del servicio de chat y IA
    *     description: Verifica el estado del servicio de chat y la integración con Gemini IA
@@ -302,7 +366,7 @@ export function createChatRoutes(): Router {
 
   /**
    * @swagger
-   * /chat/ai/info:
+   * /s3/chat/ai/info:
    *   get:
    *     summary: Información del modelo de IA
    *     description: Obtiene información detallada sobre el modelo de IA configurado
@@ -395,7 +459,7 @@ export function createChatRoutes(): Router {
 
   /**
    * @swagger
-   * /chat/ai/test:
+   * /s3/chat/ai/test:
    *   post:
    *     summary: Probar el servicio de IA
    *     description: Prueba el servicio de IA con un mensaje de prueba
@@ -490,6 +554,8 @@ export function createChatRoutes(): Router {
       });
     }
   });
+
+  // Eliminar endpoint /attempt/usecase (ya no es necesario)
 
   return router;
 } 

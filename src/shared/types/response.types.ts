@@ -43,9 +43,10 @@ export interface ChatMessage {
 
 export interface ChatAttempt {
   id: string;
-  open_without_send: number;
-  chat_estudiante_id: string;
-  created_at: Date;
+  usuario_id: string;
+  fecha: Date;
+  conversation_id?: string;
+  cantidad: number;
 }
 
 export interface ChatPorEstudiante {

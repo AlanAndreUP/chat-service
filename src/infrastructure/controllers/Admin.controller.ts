@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { GetAllConversationsUseCase } from '@application/use-cases/GetAllConversations.usecase';
 import { GetAllMessagesUseCase } from '@application/use-cases/GetAllMessages.usecase';
-import { GetAllAttemptsUseCase } from '@application/use-cases/GetAllAttempts.usecase';
+import { GetAllAttemptsUseCase } from '@/application/use-cases/GetAllAttemptsByUser.usecase';
 import { ApiResponse, ErrorResponse } from '@shared/types/response.types';
 import Joi from 'joi';
 
@@ -12,7 +12,7 @@ export class AdminController {
     private readonly getAllAttemptsUseCase: GetAllAttemptsUseCase
   ) {}
 
-  private validatePaginationRequest = Joi.object({
+  private readonly validatePaginationRequest = Joi.object({
     page: Joi.number().integer().min(1).optional().default(1),
     limit: Joi.number().integer().min(1).max(100).optional().default(50)
   });

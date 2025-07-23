@@ -1,4 +1,4 @@
-import { ChatAttemptsRepository } from '@domain/repositories/ChatAttemptsRepository.interface';
+import { ChatAttemptsRepository, ChatAttemptFilters } from '@domain/repositories/ChatAttemptsRepository.interface';
 import { ChatAttemptsModel } from '@infrastructure/database/models/ChatAttempts.model';
 import { ChatAttemptCounter } from '@domain/entities/ChatAttempts.entity';
 
@@ -53,8 +53,47 @@ export class MongoChatAttemptsRepository implements ChatAttemptsRepository {
     );
   }
 
-  async getAllByUser(usuario_id: string): Promise<ChatAttemptCounter[]> {
-    const docs = await ChatAttemptsModel.find({ usuario_id }).sort({ fecha: -1 }).lean();
+  async getAllByUser(filters: ChatAttemptFilters): Promise<{ attempts: ChatAttemptCounter[]; total: number; }> {
+    const query: any = { usuario_id: filters.usuario_id };
+    if (filters.conversation_id) {
+      query.conversation_id = filters.conversation_id;
+    }
+    if (filters.fecha_desde) {
+      query.fecha = { ...query.fecha, $gte: filters.fecha_desde };
+    }
+    if (filters.fecha_hasta) {
+      query.fecha = { ...query.fecha, $lte: filters.fecha_hasta };
+    }
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const [docs, total] = await Promise.all([
+      ChatAttemptsModel.find(query)
+        .sort({ fecha: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ChatAttemptsModel.countDocuments(query)
+    ]);
+    return {
+      attempts: docs.map((doc: any) => new ChatAttemptCounter(
+        doc._id,
+        doc.usuario_id,
+        doc.fecha,
+        doc.conversation_id,
+        doc.cantidad
+      )),
+      total
+    };
+  }
+
+  async getAllByUserPaginated(usuario_id: string, skip: number, limit: number): Promise<ChatAttemptCounter[]> {
+    const docs = await ChatAttemptsModel.find({ usuario_id })
+      .sort({ fecha: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
     return docs.map((doc: any) => new ChatAttemptCounter(
       doc._id,
       doc.usuario_id,
@@ -62,5 +101,9 @@ export class MongoChatAttemptsRepository implements ChatAttemptsRepository {
       doc.conversation_id,
       doc.cantidad
     ));
+  }
+
+  async countByUser(usuario_id: string): Promise<number> {
+    return ChatAttemptsModel.countDocuments({ usuario_id });
   }
 } 

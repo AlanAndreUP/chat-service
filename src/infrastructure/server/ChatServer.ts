@@ -15,9 +15,9 @@ import { GeminiAIService } from '@application/services/GeminiAI.service';
 import { specs } from '@infrastructure/swagger/swagger.config';
 
 export class ChatServer {
-  private app: Application;
-  private httpServer: HTTPServer;
-  private port: number;
+  private readonly app: Application;
+  private readonly httpServer: HTTPServer;
+  private readonly port: number;
   private chatSocketHandler?: ChatSocketHandler;
 
   constructor() {
