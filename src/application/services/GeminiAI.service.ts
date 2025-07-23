@@ -162,4 +162,75 @@ Tutor IA:`;
       version: '1.5'
     };
   }
+
+  /**
+   * Analiza el contexto de una conversación y responde a preguntas de moderación:
+   * - ¿Hay bullying en estas palabras?
+   * - ¿Alguna de las partes expresa preocupación?
+   * - ¿A nivel académico la conversación fluye de manera constructiva?
+   */
+  async analyzeConversationContext(messages: string[]): Promise<{
+    bullying: boolean;
+    bullying_explanation: string;
+    concern: boolean;
+    concern_explanation: string;
+    academic_constructive: boolean;
+    academic_explanation: string;
+    raw: string;
+  }> {
+    const prompt = `Eres un moderador experto en análisis de conversaciones educativas. Analiza la siguiente conversación (cada línea es un mensaje, alternando entre dos personas):
+
+"""
+${messages.join('\n')}
+"""
+
+Responde SOLO en formato JSON estricto a las siguientes preguntas (no agregues texto antes ni después):
+1. "bullying": ¿Detectas bullying, acoso o lenguaje inapropiado? (true/false)
+2. "bullying_explanation": Explica brevemente por qué sí o no.
+3. "concern": ¿Alguna de las partes expresa preocupación personal, emocional o de salud? (true/false)
+4. "concern_explanation": Explica brevemente por qué sí o no.
+5. "academic_constructive": ¿La conversación fluye de manera constructiva a nivel académico? (true/false)
+6. "academic_explanation": Explica brevemente por qué sí o no.
+
+Ejemplo de respuesta:
+{
+  "bullying": false,
+  "bullying_explanation": "No se detecta lenguaje ofensivo ni acoso.",
+  "concern": true,
+  "concern_explanation": "Una de las partes expresa preocupación por su rendimiento académico.",
+  "academic_constructive": true,
+  "academic_explanation": "La conversación es colaborativa y se enfoca en resolver dudas académicas.",
+  "raw": "(copia textual de la conversación analizada)"
+}
+
+Responde SOLO el JSON, sin explicaciones adicionales, sin texto antes ni después.`;
+
+    const result = await this.model.generateContent(prompt);
+    const response = await result.response;
+    const responseText = response.text();
+    console.log('Respuesta cruda de Gemini:', responseText);
+
+    // Intentar extraer el primer bloque JSON válido
+    let jsonText = responseText;
+    const match = responseText.match(/\{[\s\S]*\}/);
+    if (match) {
+      jsonText = match[0];
+    }
+
+    try {
+      const json = JSON.parse(jsonText);
+      if (!json.raw) json.raw = messages.join('\n');
+      return json;
+    } catch (e) {
+      return {
+        bullying: false,
+        bullying_explanation: 'No se pudo analizar la respuesta de la IA.',
+        concern: false,
+        concern_explanation: 'No se pudo analizar la respuesta de la IA.',
+        academic_constructive: false,
+        academic_explanation: 'No se pudo analizar la respuesta de la IA.',
+        raw: messages.join('\n')
+      };
+    }
+  }
 } 

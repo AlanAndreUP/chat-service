@@ -4,6 +4,7 @@ import { GetConversationsUseCase } from '@application/use-cases/GetConversations
 import { GetConversationMessagesUseCase } from '@application/use-cases/GetConversationMessages.usecase';
 import { ApiResponse, SendMessageRequest, ErrorResponse } from '@shared/types/response.types';
 import Joi from 'joi';
+import { GeminiAIService } from '@application/services/GeminiAI.service';
 
 export class ConversationController {
   constructor(
@@ -33,6 +34,10 @@ export class ConversationController {
   });
 
   private validateGetConversationMessagesRequest = Joi.object({
+    usuario_id: Joi.string().required().messages({
+      'any.required': 'El ID del usuario es requerido'
+    }),
+    analizar: Joi.string().optional().default('false'),
     page: Joi.number().integer().min(1).optional().default(1),
     limit: Joi.number().integer().min(1).max(100).optional().default(50)
   });
@@ -371,7 +376,7 @@ export class ConversationController {
       console.log(`💬 GET /conversations/${req.params.conversation_id}/messages - Obteniendo mensajes`);
 
       const { conversation_id } = req.params;
-      const { usuario_id } = req.query;
+      const { usuario_id, analizar } = req.query;
 
       if (!conversation_id) {
         const errorResponse: ErrorResponse = {
@@ -425,8 +430,16 @@ export class ConversationController {
       // Ejecutar caso de uso
       const result = await this.getConversationMessagesUseCase.execute(request);
 
+      let analysis = undefined;
+      if (analizar === 'true') {
+        // Preparar los mensajes como array de strings para el análisis
+        const messagesText = result.messages.map((msg: any) => `${msg.usuario_id === usuario_id ? 'Tú' : 'Otro'}: ${msg.mensaje}`);
+        const geminiService = new GeminiAIService();
+        analysis = await geminiService.analyzeConversationContext(messagesText);
+      }
+
       const response: ApiResponse = {
-        data: result,
+        data: analysis ? { ...result, analysis } : result,
         message: 'Mensajes de conversación obtenidos exitosamente',
         status: 'success'
       };
