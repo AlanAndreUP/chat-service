@@ -30,6 +30,8 @@ Un microservicio completo para chat en tiempo real con integración de IA (Gemin
 - **Emails personalizados** con análisis detallado del contexto
 - **Notificaciones al líder** (Alanenmexico12@gmail.com) para mensajes a IA
 - **Notificaciones a usuarios** para mensajes privados entre usuarios
+- **Integración con API de autenticación** para obtener emails reales de tutores
+- **Cache inteligente** de información de tutores (5 minutos de expiración)
 
 ## 📋 Requisitos
 
@@ -105,6 +107,7 @@ npm start
 - `GET /s3/admin/messages` - Todos los mensajes de chat de todos los usuarios
 - `GET /s3/admin/attempts` - Todos los intentos de chat de todos los usuarios
 - `GET /s3/admin/status` - Estado del servicio administrativo
+- `GET /s3/admin/tutors` - Información de tutores desde API de autenticación
 
 ### WebSocket
 - `ws://localhost:3003` - Conexión WebSocket

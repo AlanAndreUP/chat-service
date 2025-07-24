@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { AuthService } from './AuthService';
 
 export interface EmailAlertData {
   senderId: string;
@@ -18,6 +19,7 @@ export interface EmailAlertData {
 
 export class EmailService {
   private resend: Resend;
+  private authService: AuthService;
 
   constructor() {
     const apiKey = process.env.RESEND_API_KEY;
@@ -25,13 +27,26 @@ export class EmailService {
       throw new Error('RESEND_API_KEY no está configurada en las variables de entorno');
     }
     this.resend = new Resend(apiKey);
+    this.authService = new AuthService();
   }
 
   async sendMessageAlert(data: EmailAlertData): Promise<void> {
     try {
-      const recipientEmail = data.isToAI 
-        ? 'Alanenmexico12@gmail.com' 
-        : `${data.recipientId}@example.com`; // Aquí deberías obtener el email real del usuario
+      let recipientEmail: string;
+
+      if (data.isToAI) {
+        // Para mensajes a IA, siempre enviar al líder
+        recipientEmail = 'Alanenmexico12@gmail.com';
+      } else {
+        // Para mensajes privados, obtener el email real del destinatario
+        const tutorEmail = await this.authService.getTutorEmail(data.recipientId);
+        if (tutorEmail) {
+          recipientEmail = tutorEmail;
+        } else {
+          console.warn(`⚠️ No se pudo obtener email para tutor ${data.recipientId}, usando email por defecto`);
+          recipientEmail = `${data.recipientId}@gmail.com`; // Fallback
+        }
+      }
 
       const subject = data.isToAI 
         ? '🚨 Alerta: Mensaje enviado a IA' 
@@ -40,7 +55,7 @@ export class EmailService {
       const htmlContent = this.generateAlertEmailHTML(data);
 
       await this.resend.emails.send({
-        from: 'Chat Service <noreply@tu-dominio.com>', // Cambia por tu dominio verificado en Resend
+        from: 'Chat Service <noreply@rutasegura.xyz>',
         to: [recipientEmail],
         subject: subject,
         html: htmlContent
@@ -152,7 +167,7 @@ export class EmailService {
     try {
       // Resend no tiene un método de verificación directo, pero podemos intentar enviar un email de prueba
       await this.resend.emails.send({
-        from: 'Chat Service <noreply@tu-dominio.com>',
+        from: 'Chat Service <noreply@rutasegura.xyz>',
         to: ['test@example.com'],
         subject: 'Test Connection',
         html: '<p>Test email</p>'
@@ -161,6 +176,18 @@ export class EmailService {
     } catch (error) {
       console.error('❌ Error verificando conexión de email:', error);
       return false;
+    }
+  }
+
+  /**
+   * Método para testing - obtener información de tutores
+   */
+  async getTutorsInfo(): Promise<any[]> {
+    try {
+      return await this.authService.getAllTutors();
+    } catch (error) {
+      console.error('❌ Error obteniendo información de tutores:', error);
+      return [];
     }
   }
 } 

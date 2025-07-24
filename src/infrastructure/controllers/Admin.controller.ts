@@ -1,48 +1,65 @@
 import { Request, Response } from 'express';
 import { GetAllConversationsUseCase } from '@application/use-cases/GetAllConversations.usecase';
 import { GetAllMessagesUseCase } from '@application/use-cases/GetAllMessages.usecase';
-import { GetAllAttemptsUseCase } from '@/application/use-cases/GetAllAttemptsByUser.usecase';
+import { GetAllAttemptsUseCase } from '@application/use-cases/GetAllAttemptsByUser.usecase';
+import { EmailService } from '@application/services/EmailService';
 import { ApiResponse, ErrorResponse } from '@shared/types/response.types';
 import Joi from 'joi';
 
 export class AdminController {
+  private validateGetAllRequest = Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(10),
+    sortBy: Joi.string().valid('created_at', 'updated_at', 'fecha').default('created_at'),
+    sortOrder: Joi.string().valid('asc', 'desc').default('desc')
+  });
+
   constructor(
     private readonly getAllConversationsUseCase: GetAllConversationsUseCase,
     private readonly getAllMessagesUseCase: GetAllMessagesUseCase,
-    private readonly getAllAttemptsUseCase: GetAllAttemptsUseCase
+    private readonly getAllAttemptsUseCase: GetAllAttemptsUseCase,
+    private readonly emailService: EmailService
   ) {}
-
-  private readonly validatePaginationRequest = Joi.object({
-    page: Joi.number().integer().min(1).optional().default(1),
-    limit: Joi.number().integer().min(1).max(100).optional().default(50)
-  });
 
   /**
    * @swagger
-   * /admin/conversations:
+   * /s3/admin/conversations:
    *   get:
    *     summary: Obtener todas las conversaciones de todos los usuarios
-   *     description: Obtiene todas las conversaciones 1 a 1 de todos los usuarios con paginación
    *     tags: [Admin]
    *     parameters:
    *       - in: query
    *         name: page
    *         schema:
    *           type: integer
-   *           default: 1
    *           minimum: 1
+   *           default: 1
    *         description: Número de página
    *       - in: query
    *         name: limit
    *         schema:
    *           type: integer
-   *           default: 50
    *           minimum: 1
    *           maximum: 100
-   *         description: Elementos por página
+   *           default: 10
+   *         description: Número de elementos por página
+   *       - in: query
+   *         name: sortBy
+   *         schema:
+   *           type: string
+   *           enum: [created_at, updated_at, fecha]
+   *           default: created_at
+   *         description: Campo por el cual ordenar
+   *       - in: query
+   *         name: sortOrder
+   *         schema:
+   *           type: string
+   *           enum: [asc, desc]
+   *           default: desc
+   *         description: Orden de clasificación
    *     responses:
    *       200:
-   *         description: Conversaciones obtenidas exitosamente
+   *         description: Lista de conversaciones obtenida exitosamente
    *         content:
    *           application/json:
    *             schema:
@@ -54,53 +71,24 @@ export class AdminController {
    *                     conversations:
    *                       type: array
    *                       items:
-   *                         type: object
-   *                         properties:
-   *                           id:
-   *                             type: string
-   *                           participant1_id:
-   *                             type: string
-   *                           participant2_id:
-   *                             type: string
-   *                           created_at:
-   *                             type: string
-   *                             format: date-time
-   *                           updated_at:
-   *                             type: string
-   *                             format: date-time
-   *                           is_active:
-   *                             type: boolean
-   *                           last_message_at:
-   *                             type: string
-   *                             format: date-time
+   *                         $ref: '#/components/schemas/Conversation'
    *                     pagination:
-   *                       $ref: '#/components/schemas/PaginationMeta'
+   *                       $ref: '#/components/schemas/Pagination'
    *                 message:
    *                   type: string
-   *                   example: "Todas las conversaciones obtenidas exitosamente"
    *                 status:
    *                   type: string
-   *                   example: "success"
    *       400:
    *         description: Parámetros de consulta inválidos
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ErrorResponse'
    *       500:
    *         description: Error interno del servidor
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ErrorResponse'
    */
   getAllConversations = async (req: Request, res: Response): Promise<void> => {
     try {
-      console.log('📋 GET /admin/conversations - Obteniendo todas las conversaciones');
+      console.log('🔍 GET /s3/admin/conversations - Obteniendo todas las conversaciones');
 
-      // Validar query parameters
-      const { error, value } = this.validatePaginationRequest.validate(req.query);
-      
+      const { error, value } = this.validateGetAllRequest.validate(req.query);
+
       if (error) {
         const errorResponse: ErrorResponse = {
           data: null,
@@ -108,14 +96,13 @@ export class AdminController {
           status: 'error',
           error: {
             code: 'QUERY_VALIDATION_ERROR',
-            details: error.details.map((detail: any) => detail.message)
+            details: error.details.map(detail => detail.message)
           }
         };
         res.status(400).json(errorResponse);
         return;
       }
 
-      // Ejecutar caso de uso
       const result = await this.getAllConversationsUseCase.execute(value);
 
       const response: ApiResponse = {
@@ -128,47 +115,59 @@ export class AdminController {
       console.log(`✅ Conversaciones obtenidas: ${result.conversations.length}`);
 
     } catch (error) {
-      console.error('❌ Error en getAllConversations:', error);
-      
+      console.error('❌ Error obteniendo todas las conversaciones:', error);
       const errorResponse: ErrorResponse = {
         data: null,
-        message: error instanceof Error ? error.message : 'Error interno del servidor',
+        message: 'Error interno del servidor',
         status: 'error',
         error: {
-          code: 'GET_ALL_CONVERSATIONS_ERROR'
+          code: 'GET_ALL_CONVERSATIONS_ERROR',
+          details: error instanceof Error ? [error.message] : ['Error desconocido']
         }
       };
-
       res.status(500).json(errorResponse);
     }
   };
 
   /**
    * @swagger
-   * /admin/messages:
+   * /s3/admin/messages:
    *   get:
    *     summary: Obtener todos los mensajes de chat de todos los usuarios
-   *     description: Obtiene todos los mensajes de chat de todos los usuarios con paginación
    *     tags: [Admin]
    *     parameters:
    *       - in: query
    *         name: page
    *         schema:
    *           type: integer
-   *           default: 1
    *           minimum: 1
+   *           default: 1
    *         description: Número de página
    *       - in: query
    *         name: limit
    *         schema:
    *           type: integer
-   *           default: 50
    *           minimum: 1
    *           maximum: 100
-   *         description: Elementos por página
+   *           default: 10
+   *         description: Número de elementos por página
+   *       - in: query
+   *         name: sortBy
+   *         schema:
+   *           type: string
+   *           enum: [created_at, updated_at, fecha]
+   *           default: created_at
+   *         description: Campo por el cual ordenar
+   *       - in: query
+   *         name: sortOrder
+   *         schema:
+   *           type: string
+   *           enum: [asc, desc]
+   *           default: desc
+   *         description: Orden de clasificación
    *     responses:
    *       200:
-   *         description: Mensajes obtenidos exitosamente
+   *         description: Lista de mensajes obtenida exitosamente
    *         content:
    *           application/json:
    *             schema:
@@ -180,35 +179,24 @@ export class AdminController {
    *                     messages:
    *                       type: array
    *                       items:
-   *                         $ref: '#/components/schemas/ChatMessage'
+   *                         $ref: '#/components/schemas/ChatHistory'
    *                     pagination:
-   *                       $ref: '#/components/schemas/PaginationMeta'
+   *                       $ref: '#/components/schemas/Pagination'
    *                 message:
    *                   type: string
-   *                   example: "Todos los mensajes obtenidos exitosamente"
    *                 status:
    *                   type: string
-   *                   example: "success"
    *       400:
    *         description: Parámetros de consulta inválidos
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ErrorResponse'
    *       500:
    *         description: Error interno del servidor
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ErrorResponse'
    */
   getAllMessages = async (req: Request, res: Response): Promise<void> => {
     try {
-      console.log('💬 GET /admin/messages - Obteniendo todos los mensajes');
+      console.log('🔍 GET /s3/admin/messages - Obteniendo todos los mensajes');
 
-      // Validar query parameters
-      const { error, value } = this.validatePaginationRequest.validate(req.query);
-      
+      const { error, value } = this.validateGetAllRequest.validate(req.query);
+
       if (error) {
         const errorResponse: ErrorResponse = {
           data: null,
@@ -216,14 +204,13 @@ export class AdminController {
           status: 'error',
           error: {
             code: 'QUERY_VALIDATION_ERROR',
-            details: error.details.map((detail: any) => detail.message)
+            details: error.details.map(detail => detail.message)
           }
         };
         res.status(400).json(errorResponse);
         return;
       }
 
-      // Ejecutar caso de uso
       const result = await this.getAllMessagesUseCase.execute(value);
 
       const response: ApiResponse = {
@@ -236,47 +223,59 @@ export class AdminController {
       console.log(`✅ Mensajes obtenidos: ${result.messages.length}`);
 
     } catch (error) {
-      console.error('❌ Error en getAllMessages:', error);
-      
+      console.error('❌ Error obteniendo todos los mensajes:', error);
       const errorResponse: ErrorResponse = {
         data: null,
-        message: error instanceof Error ? error.message : 'Error interno del servidor',
+        message: 'Error interno del servidor',
         status: 'error',
         error: {
-          code: 'GET_ALL_MESSAGES_ERROR'
+          code: 'GET_ALL_MESSAGES_ERROR',
+          details: error instanceof Error ? [error.message] : ['Error desconocido']
         }
       };
-
       res.status(500).json(errorResponse);
     }
   };
 
   /**
    * @swagger
-   * /admin/attempts:
+   * /s3/admin/attempts:
    *   get:
    *     summary: Obtener todos los intentos de chat de todos los usuarios
-   *     description: Obtiene todos los intentos de chat de todos los usuarios con paginación
    *     tags: [Admin]
    *     parameters:
    *       - in: query
    *         name: page
    *         schema:
    *           type: integer
-   *           default: 1
    *           minimum: 1
+   *           default: 1
    *         description: Número de página
    *       - in: query
    *         name: limit
    *         schema:
    *           type: integer
-   *           default: 50
    *           minimum: 1
    *           maximum: 100
-   *         description: Elementos por página
+   *           default: 10
+   *         description: Número de elementos por página
+   *       - in: query
+   *         name: sortBy
+   *         schema:
+   *           type: string
+   *           enum: [created_at, updated_at, fecha]
+   *           default: created_at
+   *         description: Campo por el cual ordenar
+   *       - in: query
+   *         name: sortOrder
+   *         schema:
+   *           type: string
+   *           enum: [asc, desc]
+   *           default: desc
+   *         description: Orden de clasificación
    *     responses:
    *       200:
-   *         description: Intentos obtenidos exitosamente
+   *         description: Lista de intentos obtenida exitosamente
    *         content:
    *           application/json:
    *             schema:
@@ -288,45 +287,24 @@ export class AdminController {
    *                     attempts:
    *                       type: array
    *                       items:
-   *                         type: object
-   *                         properties:
-   *                           id:
-   *                             type: string
-   *                           open_without_send:
-   *                             type: number
-   *                           chat_estudiante_id:
-   *                             type: string
-   *                           created_at:
-   *                             type: string
-   *                             format: date-time
+   *                         $ref: '#/components/schemas/ChatAttempts'
    *                     pagination:
-   *                       $ref: '#/components/schemas/PaginationMeta'
+   *                       $ref: '#/components/schemas/Pagination'
    *                 message:
    *                   type: string
-   *                   example: "Todos los intentos obtenidos exitosamente"
    *                 status:
    *                   type: string
-   *                   example: "success"
    *       400:
    *         description: Parámetros de consulta inválidos
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ErrorResponse'
    *       500:
    *         description: Error interno del servidor
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ErrorResponse'
    */
   getAllAttempts = async (req: Request, res: Response): Promise<void> => {
     try {
-      console.log('📊 GET /admin/attempts - Obteniendo todos los intentos');
+      console.log('🔍 GET /s3/admin/attempts - Obteniendo todos los intentos');
 
-      // Validar query parameters
-      const { error, value } = this.validatePaginationRequest.validate(req.query);
-      
+      const { error, value } = this.validateGetAllRequest.validate(req.query);
+
       if (error) {
         const errorResponse: ErrorResponse = {
           data: null,
@@ -334,14 +312,13 @@ export class AdminController {
           status: 'error',
           error: {
             code: 'QUERY_VALIDATION_ERROR',
-            details: error.details.map((detail: any) => detail.message)
+            details: error.details.map(detail => detail.message)
           }
         };
         res.status(400).json(errorResponse);
         return;
       }
 
-      // Ejecutar caso de uso
       const result = await this.getAllAttemptsUseCase.execute(value);
 
       const response: ApiResponse = {
@@ -354,17 +331,143 @@ export class AdminController {
       console.log(`✅ Intentos obtenidos: ${result.attempts.length}`);
 
     } catch (error) {
-      console.error('❌ Error en getAllAttempts:', error);
-      
+      console.error('❌ Error obteniendo todos los intentos:', error);
       const errorResponse: ErrorResponse = {
         data: null,
-        message: error instanceof Error ? error.message : 'Error interno del servidor',
+        message: 'Error interno del servidor',
         status: 'error',
         error: {
-          code: 'GET_ALL_ATTEMPTS_ERROR'
+          code: 'GET_ALL_ATTEMPTS_ERROR',
+          details: error instanceof Error ? [error.message] : ['Error desconocido']
         }
       };
+      res.status(500).json(errorResponse);
+    }
+  };
 
+  /**
+   * @swagger
+   * /s3/admin/status:
+   *   get:
+   *     summary: Obtener estado general del sistema
+   *     tags: [Admin]
+   *     responses:
+   *       200:
+   *         description: Estado del sistema obtenido exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     status:
+   *                       type: string
+   *                     timestamp:
+   *                       type: string
+   *                     version:
+   *                       type: string
+   *                 message:
+   *                   type: string
+   *                 status:
+   *                   type: string
+   *       500:
+   *         description: Error interno del servidor
+   */
+  getSystemStatus = async (req: Request, res: Response): Promise<void> => {
+    try {
+      console.log('🔍 GET /s3/admin/status - Obteniendo estado del sistema');
+
+      const status = {
+        status: 'operational',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+        environment: process.env.NODE_ENV || 'development'
+      };
+
+      const response: ApiResponse = {
+        data: status,
+        message: 'Estado del sistema obtenido exitosamente',
+        status: 'success'
+      };
+
+      res.status(200).json(response);
+      console.log('✅ Estado del sistema obtenido');
+
+    } catch (error) {
+      console.error('❌ Error obteniendo estado del sistema:', error);
+      const errorResponse: ErrorResponse = {
+        data: null,
+        message: 'Error interno del servidor',
+        status: 'error',
+        error: {
+          code: 'GET_SYSTEM_STATUS_ERROR',
+          details: error instanceof Error ? [error.message] : ['Error desconocido']
+        }
+      };
+      res.status(500).json(errorResponse);
+    }
+  };
+
+  /**
+   * @swagger
+   * /s3/admin/tutors:
+   *   get:
+   *     summary: Obtener información de tutores desde la API de autenticación
+   *     tags: [Admin]
+   *     responses:
+   *       200:
+   *         description: Información de tutores obtenida exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       id:
+   *                         type: string
+   *                       nombre:
+   *                         type: string
+   *                       correo:
+   *                         type: string
+   *                 message:
+   *                   type: string
+   *                 status:
+   *                   type: string
+   *       500:
+   *         description: Error interno del servidor
+   */
+  getTutorsInfo = async (req: Request, res: Response): Promise<void> => {
+    try {
+      console.log('🔍 GET /s3/admin/tutors - Obteniendo información de tutores');
+
+      const tutors = await this.emailService.getTutorsInfo();
+
+      const response: ApiResponse = {
+        data: tutors,
+        message: 'Información de tutores obtenida exitosamente',
+        status: 'success'
+      };
+
+      res.status(200).json(response);
+      console.log(`✅ Información de tutores obtenida: ${tutors.length} tutores`);
+
+    } catch (error) {
+      console.error('❌ Error obteniendo información de tutores:', error);
+      const errorResponse: ErrorResponse = {
+        data: null,
+        message: 'Error interno del servidor',
+        status: 'error',
+        error: {
+          code: 'GET_TUTORS_INFO_ERROR',
+          details: error instanceof Error ? [error.message] : ['Error desconocido']
+        }
+      };
       res.status(500).json(errorResponse);
     }
   };
