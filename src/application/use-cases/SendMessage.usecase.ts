@@ -2,13 +2,17 @@ import { ChatRepository } from '@domain/repositories/ChatRepository.interface';
 import { ChatHistory } from '@domain/entities/ChatHistory.entity';
 import { GeminiAIService, GeminiRequest } from '@application/services/GeminiAI.service';
 import { EmailService, EmailAlertData } from '@application/services/EmailService';
+import { AIAnalysisRepository } from '@domain/repositories/AIAnalysisRepository.interface';
+import { AIConversationRepository } from '@domain/repositories/AIConversationRepository.interface';
 import { SendMessageRequest, SendMessageResponse } from '@shared/types/response.types';
 
 export class SendMessageUseCase {
   constructor(
     private readonly chatRepository: ChatRepository,
     private readonly geminiService: GeminiAIService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
+    private readonly aiAnalysisRepository: AIAnalysisRepository,
+    private readonly aiConversationRepository: AIConversationRepository
   ) {}
 
   async execute(request: SendMessageRequest): Promise<SendMessageResponse> {
@@ -56,12 +60,66 @@ export class SendMessageUseCase {
       // 5. Marcar mensaje del usuario como entregado
       await this.chatRepository.markAsDelivered([savedUserMessage.id]);
 
-      // 6. Enviar alerta por email (en paralelo, sin esperar)
-      this.sendEmailAlert(request, savedUserMessage.id, true).catch(error => {
+      // 6. Analizar el mensaje del usuario con IA
+      console.log(`🔍 Analizando mensaje con IA...`);
+      const analysis = await this.geminiService.analyzeConversationContext([request.mensaje]);
+
+      // 7. Guardar análisis de IA en base de datos
+      const savedAnalysis = await this.aiAnalysisRepository.save({
+        message_id: savedUserMessage.id,
+        sender_id: request.usuario_id,
+        recipient_id: 'ai-system',
+        message_content: request.mensaje,
+        analysis: analysis,
+        is_to_ai: true
+      });
+      console.log(`✅ Análisis de IA guardado: ${savedAnalysis.id}`);
+
+      // 8. Guardar conversación con IA en base de datos
+      const conversationId = `ai_${request.usuario_id}_${Date.now()}`;
+      let aiConversation = await this.aiConversationRepository.findByConversationId(conversationId);
+      
+      if (!aiConversation) {
+        // Crear nueva conversación con IA
+        aiConversation = await this.aiConversationRepository.save({
+          user_id: request.usuario_id,
+          conversation_id: conversationId,
+          messages: [],
+          total_messages: 0,
+          ai_responses_count: 0,
+          user_messages_count: 0,
+          first_message_at: new Date(),
+          last_message_at: new Date(),
+          is_active: true
+        });
+      }
+
+      // Agregar mensaje del usuario a la conversación
+      await this.aiConversationRepository.addMessage(
+        conversationId,
+        savedUserMessage.id,
+        request.mensaje,
+        false, // isAIResponse = false
+        savedAnalysis.id // analysisId
+      );
+
+      // Agregar respuesta de IA a la conversación
+      await this.aiConversationRepository.addMessage(
+        conversationId,
+        savedAiMessage.id,
+        aiResponse.response,
+        true, // isAIResponse = true
+        undefined // No hay análisis para respuestas de IA
+      );
+
+      console.log(`✅ Conversación con IA guardada: ${conversationId}`);
+
+      // 9. Enviar alerta por email (en paralelo, sin esperar)
+      this.sendEmailAlert(request, savedUserMessage.id, true, savedAnalysis.id).catch(error => {
         console.error('❌ Error enviando email de alerta:', error);
       });
 
-      // 7. Retornar ambos mensajes
+      // 10. Retornar ambos mensajes
       return {
         message: {
           id: savedUserMessage.id,
@@ -139,10 +197,21 @@ export class SendMessageUseCase {
     }
   }
 
-  private async sendEmailAlert(request: SendMessageRequest, messageId: string, isToAI: boolean): Promise<void> {
+  private async sendEmailAlert(request: SendMessageRequest, messageId: string, isToAI: boolean, analysisId?: string): Promise<void> {
     try {
-      // Analizar el contexto del mensaje
-      const analysis = await this.geminiService.analyzeConversationContext([request.mensaje]);
+      // Obtener el análisis guardado en base de datos
+      let analysis;
+      if (analysisId) {
+        const savedAnalysis = await this.aiAnalysisRepository.findByMessageId(messageId);
+        if (savedAnalysis) {
+          analysis = savedAnalysis.analysis;
+        }
+      }
+
+      // Si no hay análisis guardado, generar uno nuevo
+      if (!analysis) {
+        analysis = await this.geminiService.analyzeConversationContext([request.mensaje]);
+      }
 
       const emailData: EmailAlertData = {
         senderId: request.usuario_id,

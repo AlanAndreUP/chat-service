@@ -6,6 +6,8 @@ import { MongoChatRepository } from '@infrastructure/repositories/MongoChatRepos
 import { MongoChatAttemptsRepository } from '@infrastructure/repositories/MongoChatAttemptsRepository';
 import { GeminiAIService } from '@application/services/GeminiAI.service';
 import { EmailService } from '@application/services/EmailService';
+import { MongoAIAnalysisRepository } from '@infrastructure/repositories/MongoAIAnalysisRepository';
+import { MongoAIConversationRepository } from '@infrastructure/repositories/MongoAIConversationRepository';
 import { AttemptMessageUseCase } from '@application/use-cases/AttemptMessage.usecase';
 import { GetAllAttemptsUseCase } from '@application/use-cases/GetAllAttemptsByUser.usecase';
 
@@ -17,20 +19,17 @@ export function createChatRoutes(): Router {
   const attemptsRepository = new MongoChatAttemptsRepository();
   const geminiService = new GeminiAIService();
   const emailService = new EmailService();
+  const aiAnalysisRepository = new MongoAIAnalysisRepository();
+  const aiConversationRepository = new MongoAIConversationRepository();
   
   // Casos de uso
-  const sendMessageUseCase = new SendMessageUseCase(chatRepository, geminiService, emailService);
+  const sendMessageUseCase = new SendMessageUseCase(chatRepository, geminiService, emailService, aiAnalysisRepository, aiConversationRepository);
   const getChatHistoryUseCase = new GetChatHistoryUseCase(chatRepository, attemptsRepository);
   const attemptMessageUseCase = new AttemptMessageUseCase(attemptsRepository);
   const getAllAttemptsUseCase = new GetAllAttemptsUseCase(attemptsRepository);
   
   // Controlador
-  const chatController = new ChatController(
-    sendMessageUseCase,
-    getChatHistoryUseCase,
-    attemptMessageUseCase,
-    getAllAttemptsUseCase
-  );
+  const chatController = new ChatController(sendMessageUseCase, getChatHistoryUseCase, attemptMessageUseCase, getAllAttemptsUseCase);
 
   // ============================================================================
   // RUTAS DE CHAT

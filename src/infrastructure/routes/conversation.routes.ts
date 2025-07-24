@@ -7,6 +7,7 @@ import { MongoChatRepository } from '@infrastructure/repositories/MongoChatRepos
 import { MongoConversationRepository } from '@infrastructure/repositories/MongoConversationRepository';
 import { EmailService } from '@application/services/EmailService';
 import { GeminiAIService } from '@application/services/GeminiAI.service';
+import { MongoAIAnalysisRepository } from '@infrastructure/repositories/MongoAIAnalysisRepository';
 
 export function createConversationRoutes(): Router {
   const router = Router();
@@ -16,9 +17,10 @@ export function createConversationRoutes(): Router {
   const conversationRepository = new MongoConversationRepository();
   const emailService = new EmailService();
   const geminiService = new GeminiAIService();
+  const aiAnalysisRepository = new MongoAIAnalysisRepository();
   
   // Casos de uso
-  const sendPrivateMessageUseCase = new SendPrivateMessageUseCase(chatRepository, conversationRepository, emailService, geminiService);
+  const sendPrivateMessageUseCase = new SendPrivateMessageUseCase(chatRepository, conversationRepository, emailService, geminiService, aiAnalysisRepository);
   const getConversationsUseCase = new GetConversationsUseCase(conversationRepository, chatRepository);
   const getConversationMessagesUseCase = new GetConversationMessagesUseCase(conversationRepository, chatRepository);
   

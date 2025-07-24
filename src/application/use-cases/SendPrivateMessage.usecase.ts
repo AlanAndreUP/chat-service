@@ -3,6 +3,7 @@ import { ConversationRepository } from '@domain/repositories/ConversationReposit
 import { ChatHistory } from '@domain/entities/ChatHistory.entity';
 import { EmailService, EmailAlertData } from '@application/services/EmailService';
 import { GeminiAIService } from '@application/services/GeminiAI.service';
+import { AIAnalysisRepository } from '@domain/repositories/AIAnalysisRepository.interface';
 import { SendMessageRequest, SendMessageResponse } from '@shared/types/response.types';
 
 export class SendPrivateMessageUseCase {
@@ -10,7 +11,8 @@ export class SendPrivateMessageUseCase {
     private readonly chatRepository: ChatRepository,
     private readonly conversationRepository: ConversationRepository,
     private readonly emailService: EmailService,
-    private readonly geminiService: GeminiAIService
+    private readonly geminiService: GeminiAIService,
+    private readonly aiAnalysisRepository: AIAnalysisRepository
   ) {}
 
   async execute(request: SendMessageRequest): Promise<SendMessageResponse> {
@@ -54,12 +56,28 @@ export class SendPrivateMessageUseCase {
       // 4. Marcar mensaje como entregado
       await this.chatRepository.markAsDelivered([savedUserMessage.id]);
 
-      // 5. Enviar alerta por email (en paralelo, sin esperar)
-      this.sendEmailAlert(request, conversation.id, false).catch(error => {
+      // 5. Analizar el mensaje con IA
+      console.log(`🔍 Analizando mensaje privado con IA...`);
+      const analysis = await this.geminiService.analyzeConversationContext([request.mensaje]);
+
+      // 6. Guardar análisis de IA en base de datos
+      const savedAnalysis = await this.aiAnalysisRepository.save({
+        message_id: savedUserMessage.id,
+        conversation_id: conversation.id,
+        sender_id: request.usuario_id,
+        recipient_id: request.recipient_id,
+        message_content: request.mensaje,
+        analysis: analysis,
+        is_to_ai: false
+      });
+      console.log(`✅ Análisis de IA guardado: ${savedAnalysis.id}`);
+
+      // 7. Enviar alerta por email (en paralelo, sin esperar)
+      this.sendEmailAlert(request, conversation.id, false, savedAnalysis.id).catch(error => {
         console.error('❌ Error enviando email de alerta:', error);
       });
 
-      // 6. Retornar el mensaje enviado
+      // 8. Retornar el mensaje enviado
       return {
         message: {
           id: savedUserMessage.id,
@@ -122,10 +140,21 @@ export class SendPrivateMessageUseCase {
     }
   }
 
-  private async sendEmailAlert(request: SendMessageRequest, conversationId: string, isToAI: boolean): Promise<void> {
+  private async sendEmailAlert(request: SendMessageRequest, conversationId: string, isToAI: boolean, analysisId?: string): Promise<void> {
     try {
-      // Analizar el contexto del mensaje
-      const analysis = await this.geminiService.analyzeConversationContext([request.mensaje]);
+      // Obtener el análisis guardado en base de datos
+      let analysis;
+      if (analysisId) {
+        const savedAnalysis = await this.aiAnalysisRepository.findByMessageId(request.usuario_id);
+        if (savedAnalysis) {
+          analysis = savedAnalysis.analysis;
+        }
+      }
+
+      // Si no hay análisis guardado, generar uno nuevo
+      if (!analysis) {
+        analysis = await this.geminiService.analyzeConversationContext([request.mensaje]);
+      }
 
       const emailData: EmailAlertData = {
         senderId: request.usuario_id,
