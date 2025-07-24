@@ -14,6 +14,8 @@ import { MongoChatRepository } from '@infrastructure/repositories/MongoChatRepos
 import { GeminiAIService } from '@application/services/GeminiAI.service';
 import { specs } from '@infrastructure/swagger/swagger.config';
 import { EmailService } from '@/application/services/EmailService';
+import { MongoAIAnalysisRepository } from '../repositories/MongoAIAnalysisRepository';
+import { MongoAIConversationRepository } from '../repositories/MongoAIConversationRepository';
 
 export class ChatServer {
   private readonly app: Application;
@@ -333,8 +335,10 @@ export class ChatServer {
       const chatRepository = new MongoChatRepository();
       const geminiService = new GeminiAIService();
       const emailService = new EmailService();
+      const aiAnalysisRepository = new MongoAIAnalysisRepository();
+      const aiConversationRepository = new MongoAIConversationRepository();
       // Se requiere un tercer argumento para SendMessageUseCase
-      const sendMessageUseCase = new SendMessageUseCase(chatRepository, geminiService, emailService);
+      const sendMessageUseCase = new SendMessageUseCase(chatRepository, geminiService, emailService, aiAnalysisRepository, aiConversationRepository);
       
       // Inicializar el manejador de WebSockets
       this.chatSocketHandler = new ChatSocketHandler(this.httpServer, sendMessageUseCase);
