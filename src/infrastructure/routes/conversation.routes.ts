@@ -12,28 +12,21 @@ import { MongoAIAnalysisRepository } from '@infrastructure/repositories/MongoAIA
 export function createConversationRoutes(): Router {
   const router = Router();
   
-  // Dependencias
   const chatRepository = new MongoChatRepository();
   const conversationRepository = new MongoConversationRepository();
   const emailService = new EmailService();
   const geminiService = new GeminiAIService();
   const aiAnalysisRepository = new MongoAIAnalysisRepository();
   
-  // Casos de uso
   const sendPrivateMessageUseCase = new SendPrivateMessageUseCase(chatRepository, conversationRepository, emailService, geminiService, aiAnalysisRepository);
   const getConversationsUseCase = new GetConversationsUseCase(conversationRepository, chatRepository);
   const getConversationMessagesUseCase = new GetConversationMessagesUseCase(conversationRepository, chatRepository);
   
-  // Controlador
   const conversationController = new ConversationController(
     sendPrivateMessageUseCase,
     getConversationsUseCase,
     getConversationMessagesUseCase
   );
-
-  // ============================================================================
-  // RUTAS DE CONVERSACIONES 1 A 1
-  // ============================================================================
 
   /**
    * POST /conversations/message
@@ -52,10 +45,6 @@ export function createConversationRoutes(): Router {
    * Obtener mensajes de una conversación específica
    */
   router.get('/:conversation_id/messages', conversationController.getConversationMessages);
-
-  // ============================================================================
-  // RUTAS DE ESTADO Y HEALTH CHECK
-  // ============================================================================
 
   /**
    * @swagger

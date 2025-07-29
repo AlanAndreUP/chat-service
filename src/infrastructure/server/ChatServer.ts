@@ -16,6 +16,7 @@ import { specs } from '@infrastructure/swagger/swagger.config';
 import { EmailService } from '@/application/services/EmailService';
 import { MongoAIAnalysisRepository } from '../repositories/MongoAIAnalysisRepository';
 import { MongoAIConversationRepository } from '../repositories/MongoAIConversationRepository';
+import { logger } from '@shared/utils/Logger';
 
 export class ChatServer {
   private readonly app: Application;
@@ -26,8 +27,7 @@ export class ChatServer {
   constructor() {
     this.app = express();
     this.port = parseInt(process.env.PORT || '3003');
-    
-    // Crear servidor HTTP que soporta WebSockets
+
     this.httpServer = createServer(this.app);
     
     this.middlewares();
@@ -37,57 +37,46 @@ export class ChatServer {
   }
 
   private middlewares(): void {
-    // Configurar trust proxy de forma segura
-    // Solo confiar en proxies si estamos detrás de un proxy real
     this.app.set('trust proxy', true);
     
-    // Seguridad
     this.app.use(helmet({
-      crossOriginEmbedderPolicy: false // Permitir WebSockets
+        crossOriginEmbedderPolicy: false
     }));
     
-    // CORS configurado para WebSockets - Configuración libre
     this.app.use(cors({
-      origin: true, // Permitir todos los orígenes
+      origin: true,
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-User-ID', 'Origin', 'X-Requested-With', 'Accept'],
       exposedHeaders: ['Content-Length', 'X-User-ID']
     }));
 
-    // Rate limiting más permisivo para chat
     const limiter = rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutos
-      max: 200, // 200 requests por IP (más que otros servicios)
+      windowMs: 15 * 60 * 1000,
+      max: 200,
       message: {
         data: null,
         message: 'Demasiadas peticiones desde esta IP, intenta de nuevo más tarde',
         status: 'error'
       },
       keyGenerator: (req) => {
-        // Usar IP real sin depender de headers que pueden ser falsificados
         return req.ip || req.connection.remoteAddress || 'unknown';
       },
       skip: (req) => {
-        // Saltar rate limiting para health checks y status
         return req.path === '/s3/health' || req.path === '/s3/chat/status';
       }
     });
     this.app.use(limiter);
 
-    // Parsers
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
     
-    // Middleware adicional para CORS preflight - Configuración libre
     this.app.use((req, res, next) => {
-      // Permitir cualquier origen
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-User-ID');
       
-      // Manejar preflight requests
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
       } else {
@@ -97,7 +86,6 @@ export class ChatServer {
   }
 
   private routes(): void {
-    // Prefijo para todas las rutas
     const API_PREFIX = '/s3';
     
     /**
@@ -254,7 +242,6 @@ export class ChatServer {
       });
     });
 
-    // Swagger Documentation
     this.app.use(`${API_PREFIX}/api-docs`, swaggerUi.serve, swaggerUi.setup(specs, {
       customCss: '.swagger-ui .topbar { display: none }',
       customSiteTitle: 'Chat Service API Documentation',
@@ -267,28 +254,22 @@ export class ChatServer {
       }
     }));
 
-    // API Documentation JSON
     this.app.get(`${API_PREFIX}/api-docs.json`, (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.send(specs);
     });
 
-    // Swagger JSON file
     this.app.get(`${API_PREFIX}/swagger.json`, (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.sendFile('swagger.json', { root: './' });
     });
 
-    // Chat routes
     this.app.use(`${API_PREFIX}/chat`, createChatRoutes());
     
-    // Conversation routes
     this.app.use(`${API_PREFIX}/conversations`, createConversationRoutes());
 
-    // Admin routes
     this.app.use(`${API_PREFIX}/admin`, createAdminRoutes());
 
-    // 404 handler
     this.app.use('*', (req, res) => {
       res.status(404).json({
         data: null,
@@ -302,7 +283,6 @@ export class ChatServer {
       });
     });
 
-    // Error handler global
     this.app.use((error: any, req: any, res: any, next: any) => {
       console.error('❌ Error no capturado:', error);
       
@@ -320,89 +300,50 @@ export class ChatServer {
   private async connectDB(): Promise<void> {
     try {
       await connectDatabase();
-      console.log('📊 Chat Service: Base de datos conectada exitosamente');
+      logger.info('Base de datos conectada exitosamente', 'ChatServer');
     } catch (error) {
-      console.error('❌ Chat Service: Error conectando a la base de datos:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error conectando a la base de datos', 'ChatServer', { 
+        error: errorMessage 
+      });
       process.exit(1);
     }
   }
 
   private setupWebSockets(): void {
     try {
-      console.log('🔌 Configurando WebSockets...');
+      logger.info('Configurando WebSockets', 'ChatServer');
       
-      // Crear dependencias para WebSockets
       const chatRepository = new MongoChatRepository();
       const geminiService = new GeminiAIService();
       const emailService = new EmailService();
       const aiAnalysisRepository = new MongoAIAnalysisRepository();
       const aiConversationRepository = new MongoAIConversationRepository();
-      // Se requiere un tercer argumento para SendMessageUseCase
       const sendMessageUseCase = new SendMessageUseCase(chatRepository, geminiService, emailService, aiAnalysisRepository, aiConversationRepository);
       
-      // Inicializar el manejador de WebSockets
       this.chatSocketHandler = new ChatSocketHandler(this.httpServer, sendMessageUseCase);
-      console.log('✅ WebSockets configurados exitosamente');
+      logger.info('WebSockets configurados exitosamente', 'ChatServer');
       
     } catch (error) {
-      console.error('❌ Error configurando WebSockets:', error);
-      // No salir del proceso, WebSockets es opcional
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error configurando WebSockets', 'ChatServer', { 
+        error: errorMessage 
+      });
     }
   }
 
   public start(): void {
     this.httpServer.listen(this.port, '0.0.0.0', () => {
-
-      console.log(`\n🚀 Chat Service corriendo en puerto ${this.port}`);
-      console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`\n📡 Endpoints disponibles:`);
-      console.log(`   • Health Check:  http://localhost:${this.port}/s3/health`);
-      console.log(`   • Chat API:      http://localhost:${this.port}/s3/chat`);
-      console.log(`   • Conversations: http://localhost:${this.port}/s3/conversations`);
-      console.log(`   • Admin API:     http://localhost:${this.port}/s3/admin`);
-      console.log(`   • WebSocket:     ws://localhost:${this.port}`);
-      console.log(`   • WS Info:       http://localhost:${this.port}/s3/ws-info`);
-      console.log(`   • API Docs:      http://localhost:${this.port}/s3/api-docs`);
-      console.log(`   • API Spec:      http://localhost:${this.port}/s3/api-docs.json`);
-      console.log(`   • Swagger JSON:  http://localhost:${this.port}/s3/swagger.json`);
-      
-      console.log(`\n💬 Funcionalidades de Chat:`);
-      console.log(`   ✅ Chat en tiempo real con WebSockets`);
-      console.log(`   ✅ Respuestas automáticas con Gemini IA`);
-      console.log(`   ✅ Historial de mensajes persistente`);
-      console.log(`   ✅ Sistema de intentos de chat`);
-      console.log(`   ✅ Notificaciones de "está escribiendo"`);
-      console.log(`   ✅ Chat privado 1 a 1 entre usuarios`);
-      console.log(`   ✅ Gestión de conversaciones`);
-      console.log(`   ✅ Marcado de mensajes leídos`);
-      
-      console.log(`\n🔧 Funcionalidades Administrativas:`);
-      console.log(`   ✅ Obtener todas las conversaciones`);
-      console.log(`   ✅ Obtener todos los mensajes`);
-      console.log(`   ✅ Obtener todos los intentos`);
-      console.log(`   ✅ Paginación avanzada`);
-      console.log(`   ✅ Estadísticas generales`);
-      
-      if (this.chatSocketHandler) {
-        console.log(`\n🔌 WebSocket eventos soportados:`);
-        console.log(`   📤 Cliente → Servidor: send_message, typing, join_chat`);
-        console.log(`   📥 Servidor → Cliente: message_sent, ai_response, user_typing`);
-        console.log(`\n📊 Conexiones WebSocket activas: ${this.chatSocketHandler.getConnectionCount()}`);
-      }
-      
-      console.log(`\n🤖 Gemini IA configurado:`);
-      const geminiService = new GeminiAIService();
-      const aiInfo = geminiService.getModelInfo();
-      console.log(`   • Modelo: ${aiInfo.model} (${aiInfo.provider})`);
-      console.log(`   • Especialización: Educación y tutoría`);
-      console.log(`   • Idioma: Español`);
-      
-      console.log(`\n`);
+      logger.info('Chat Service iniciado', 'ChatServer', {
+        port: this.port,
+        environment: process.env.NODE_ENV || 'development',
+        websocketConnections: this.chatSocketHandler?.getConnectionCount() || 0
+      });
     });
   }
 
   public stop(): void {
-    console.log('🛑 Cerrando servidor de chat...');
+    logger.info('Cerrando servidor de chat', 'ChatServer');
     this.httpServer.close();
   }
 

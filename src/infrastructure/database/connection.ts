@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { logger } from '@shared/utils/Logger';
 
 export async function connectDatabase(): Promise<void> {
   try {
@@ -10,23 +11,23 @@ export async function connectDatabase(): Promise<void> {
       socketTimeoutMS: 45000,
     });
 
-    console.log('✅ Chat Service: Conectado a MongoDB exitosamente');
+    logger.info('Conectado a MongoDB exitosamente', 'Database');
     
-    // Eventos de conexión
     mongoose.connection.on('error', (error) => {
-      console.error('❌ Chat Service: Error de conexión MongoDB:', error);
+      logger.error('Error de conexión MongoDB', 'Database', { error: error.message });
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.warn('⚠️  Chat Service: MongoDB desconectado');
+      logger.warn('MongoDB desconectado', 'Database');
     });
 
     mongoose.connection.on('reconnected', () => {
-      console.log('🔄 Chat Service: MongoDB reconectado');
+      logger.info('MongoDB reconectado', 'Database');
     });
 
   } catch (error) {
-    console.error('❌ Chat Service: Error conectando a MongoDB:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('Error conectando a MongoDB', 'Database', { error: errorMessage });
     throw error;
   }
 } 

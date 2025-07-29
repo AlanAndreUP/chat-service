@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { logger } from '@shared/utils/Logger';
 import { ChatHistory } from '@domain/entities/ChatHistory.entity';
 
 export interface GeminiRequest {
@@ -37,14 +38,12 @@ export class GeminiAIService {
 
   async generateResponse(request: GeminiRequest): Promise<GeminiResponse> {
     try {
-      console.log(`🤖 Generando respuesta IA para usuario: ${request.userId}`);
+      logger.info(`Generando respuesta IA`, 'GeminiAI', { userId: request.userId });
 
-      // Construir contexto de conversación
       const conversationContext = this.buildConversationContext(
         request.conversationHistory || []
       );
 
-      // Prompt del sistema para tutorías
       const systemPrompt = `
 Eres un asistente de IA especializado en educación y tutorías. Tu objetivo es:
 
@@ -65,7 +64,6 @@ Si no entiendes algo, pide aclaraciones.
 Si la pregunta no es académica, redirige amablemente hacia temas educativos.
       `.trim();
 
-      // Combinar contexto y mensaje actual
       const fullPrompt = `
 ${systemPrompt}
 
@@ -75,12 +73,14 @@ Estudiante: ${request.userMessage}
 
 Tutor IA:`;
 
-      // Generar respuesta
       const result = await this.model.generateContent(fullPrompt);
       const response = await result.response;
       const responseText = response.text();
 
-      console.log(`✅ Respuesta IA generada: ${responseText.substring(0, 100)}...`);
+      logger.info(`Respuesta IA generada`, 'GeminiAI', { 
+        userId: request.userId,
+        responseLength: responseText.length 
+      });
 
       return {
         response: responseText.trim(),
@@ -89,9 +89,12 @@ Tutor IA:`;
       };
 
     } catch (error) {
-      console.error('❌ Error generando respuesta con Gemini:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error generando respuesta con Gemini', 'GeminiAI', { 
+        userId: request.userId, 
+        error: errorMessage 
+      });
       
-      // Respuesta de fallback
       return {
         response: this.getFallbackResponse(request.userMessage),
         model: 'fallback',
@@ -105,7 +108,6 @@ Tutor IA:`;
       return '';
     }
 
-    // Tomar los últimos 10 mensajes para contexto
     const recentHistory = history.slice(-10);
     
     const context = recentHistory.map(msg => {
@@ -117,7 +119,6 @@ Tutor IA:`;
   }
 
   private estimateTokens(text: string): number {
-    // Estimación aproximada: 1 token ≈ 4 caracteres
     return Math.ceil(text.length / 4);
   }
 
@@ -132,7 +133,6 @@ Tutor IA:`;
       "💡 Aunque tengo dificultades técnicas ahora, recuerda que estudiar regularmente y hacer preguntas específicas te ayudará mucho. ¡Vuelve pronto!"
     ];
 
-    // Seleccionar respuesta basada en el contenido del mensaje
     if (userMessage.toLowerCase().includes('hola') || userMessage.toLowerCase().includes('saludo')) {
       return fallbackResponses[0];
     } else if (userMessage.toLowerCase().includes('tarea') || userMessage.toLowerCase().includes('estudio')) {
@@ -150,7 +150,10 @@ Tutor IA:`;
       
       return text.includes('OK');
     } catch (error) {
-      console.error('❌ Gemini AI service health check failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Gemini AI service health check failed', 'GeminiAI', { 
+        error: errorMessage 
+      });
       return false;
     }
   }
@@ -208,9 +211,8 @@ Responde SOLO el JSON, sin explicaciones adicionales, sin texto antes ni despué
     const result = await this.model.generateContent(prompt);
     const response = await result.response;
     const responseText = response.text();
-    console.log('Respuesta cruda de Gemini:', responseText);
+    logger.debug('Respuesta cruda de Gemini', 'GeminiAI', { responseText });
 
-    // Intentar extraer el primer bloque JSON válido
     let jsonText = responseText;
     const match = responseText.match(/\{[\s\S]*\}/);
     if (match) {

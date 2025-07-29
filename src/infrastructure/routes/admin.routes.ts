@@ -11,18 +11,15 @@ import { EmailService } from '@application/services/EmailService';
 export function createAdminRoutes(): Router {
   const router = Router();
   
-  // Dependencias
   const conversationRepository = new MongoConversationRepository();
   const chatRepository = new MongoChatRepository();
   const attemptsRepository = new MongoChatAttemptsRepository();
   const emailService = new EmailService();
   
-  // Casos de uso
   const getAllConversationsUseCase = new GetAllConversationsUseCase(conversationRepository);
   const getAllMessagesUseCase = new GetAllMessagesUseCase(chatRepository);
   const getAllAttemptsUseCase = new GetAllAttemptsUseCase(attemptsRepository);
   
-  // Controlador
   const adminController = new AdminController(
     getAllConversationsUseCase,
     getAllMessagesUseCase,
@@ -30,7 +27,6 @@ export function createAdminRoutes(): Router {
     emailService
   );
 
-  // Rutas administrativas
   router.get('/conversations', adminController.getAllConversations);
   router.get('/messages', adminController.getAllMessages);
   router.get('/attempts', adminController.getAllAttempts);

@@ -130,8 +130,6 @@ export class MongoAIConversationRepository implements AIConversationRepository {
       if (!conversation) {
         throw new Error('Conversación no encontrada');
       }
-
-      // Agregar el mensaje usando el método de instancia
       await conversation.addMessage(messageId, content, isAIResponse, analysisId);
       
       return {

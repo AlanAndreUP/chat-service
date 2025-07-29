@@ -32,17 +32,13 @@ const ChatPorEstudianteSchema = new Schema<IChatPorEstudianteDocument>({
   timestamps: false
 });
 
-// Índice único compuesto para evitar duplicados
 ChatPorEstudianteSchema.index({ chat_id: 1, estudiante_id: 1 }, { unique: true });
 
-// Índices para optimizar consultas
 ChatPorEstudianteSchema.index({ estudiante_id: 1, created_at: -1 });
 ChatPorEstudianteSchema.index({ chat_id: 1 });
 
-// Método estático para crear o encontrar relación
 ChatPorEstudianteSchema.statics.findOrCreate = async function(chatId: string, estudianteId: string) {
   try {
-    // Intentar encontrar la relación existente
     const existing = await this.findOne({
       chat_id: chatId,
       estudiante_id: estudianteId
@@ -52,7 +48,6 @@ ChatPorEstudianteSchema.statics.findOrCreate = async function(chatId: string, es
       return existing;
     }
 
-    // Crear nueva relación si no existe
     const newRelation = new this({
       _id: Math.random().toString(36).substring(2) + Date.now().toString(36),
       chat_id: chatId,
@@ -62,7 +57,6 @@ ChatPorEstudianteSchema.statics.findOrCreate = async function(chatId: string, es
 
     return await newRelation.save();
   } catch (error: any) {
-    // Si el error es por duplicado, intentar encontrar el existente
     if (error.code === 11000) {
       return await this.findOne({
         chat_id: chatId,
@@ -73,7 +67,6 @@ ChatPorEstudianteSchema.statics.findOrCreate = async function(chatId: string, es
   }
 };
 
-// Método estático para obtener todos los chats de un estudiante
 ChatPorEstudianteSchema.statics.findChatsByStudent = function(estudianteId: string) {
   return this.find({ estudiante_id: estudianteId })
     .populate('chat_id')
@@ -82,7 +75,6 @@ ChatPorEstudianteSchema.statics.findChatsByStudent = function(estudianteId: stri
     .exec();
 };
 
-// Método estático para obtener estudiantes en un chat
 ChatPorEstudianteSchema.statics.findStudentsInChat = function(chatId: string) {
   return this.find({ chat_id: chatId })
     .sort({ created_at: 1 })
@@ -90,7 +82,6 @@ ChatPorEstudianteSchema.statics.findStudentsInChat = function(chatId: string) {
     .exec();
 };
 
-// Método estático para eliminar relación
 ChatPorEstudianteSchema.statics.removeRelation = function(chatId: string, estudianteId: string) {
   return this.deleteOne({
     chat_id: chatId,
@@ -98,7 +89,6 @@ ChatPorEstudianteSchema.statics.removeRelation = function(chatId: string, estudi
   });
 };
 
-// Método estático para contar chats activos por estudiante
 ChatPorEstudianteSchema.statics.countActiveChats = function(estudianteId: string) {
   return this.countDocuments({ estudiante_id: estudianteId });
 };

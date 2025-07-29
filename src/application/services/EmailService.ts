@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { AuthService } from './AuthService';
+import { logger } from '@shared/utils/Logger';
 
 export interface EmailAlertData {
   senderId: string;
@@ -43,8 +44,10 @@ export class EmailService {
         if (tutorEmail) {
           recipientEmail = tutorEmail;
         } else {
-          console.warn(`⚠️ No se pudo obtener email para tutor ${data.recipientId}, usando email por defecto`);
-          recipientEmail = `${data.recipientId}@gmail.com`; // Fallback
+          logger.warn(`No se pudo obtener email para tutor`, 'EmailService', { 
+            recipientId: data.recipientId 
+          });
+          recipientEmail = `${data.recipientId}@gmail.com`;
         }
       }
 
@@ -61,11 +64,15 @@ export class EmailService {
         html: htmlContent
       });
 
-      console.log(`✅ Email de alerta enviado a: ${recipientEmail}`);
+      logger.info(`Email de alerta enviado`, 'EmailService', { 
+        recipientEmail 
+      });
 
     } catch (error) {
-      console.error('❌ Error enviando email de alerta:', error);
-      // No lanzar error para no interrumpir el flujo principal
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error enviando email de alerta', 'EmailService', { 
+        error: errorMessage 
+      });
     }
   }
 
@@ -165,7 +172,6 @@ export class EmailService {
 
   async testConnection(): Promise<boolean> {
     try {
-      // Resend no tiene un método de verificación directo, pero podemos intentar enviar un email de prueba
       await this.resend.emails.send({
         from: 'Chat Service <noreply@rutasegura.xyz>',
         to: ['test@example.com'],
@@ -174,19 +180,22 @@ export class EmailService {
       });
       return true;
     } catch (error) {
-      console.error('❌ Error verificando conexión de email:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error verificando conexión de email', 'EmailService', { 
+        error: errorMessage 
+      });
       return false;
     }
   }
 
-  /**
-   * Método para testing - obtener información de tutores
-   */
   async getTutorsInfo(): Promise<any[]> {
     try {
       return await this.authService.getAllTutors();
     } catch (error) {
-      console.error('❌ Error obteniendo información de tutores:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error obteniendo información de tutores', 'EmailService', { 
+        error: errorMessage 
+      });
       return [];
     }
   }
